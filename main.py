@@ -9,7 +9,7 @@ if __name__ == "__main__":
     #create start state
     startState = TreeProcessor.Node(ui.P1.moves, ui.P1.name, ui.P1.boardNr,
                                     ui.P2.moves, ui.P2.name, ui.P2.boardNr,
-                                    ui.startPlayer.name, 0)
+                                    ui.startPlayer.name, 0, 0)
     
     tree = TreeProcessor.Tree(ui.specialCases, ui.posDict, startState)
     tree.generateTree()
@@ -19,4 +19,3 @@ if __name__ == "__main__":
     #Game loop
     while True:
         ui.update()
-        
