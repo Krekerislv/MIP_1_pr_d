@@ -3,7 +3,7 @@ from copy import deepcopy
 LIMIT = 5 #depth limit
 
 class Node:
-    def __init__(self, P1moves, P1name, P1boardNr, P2moves, P2name, P2boardNr, startPlayer, level):
+    def __init__(self, P1moves, P1name, P1boardNr, P2moves, P2name, P2boardNr, startPlayer, level, score):
         self.P1moves = P1moves
         self.P1name = P1name
         self.P1boardNr = P1boardNr
@@ -11,6 +11,7 @@ class Node:
         self.P2moves = P2moves
         self.P2name = P2name
         self.P2boardNr = P2boardNr
+        self.score = score
 
         self.movingPlayer = startPlayer #name of starting player
 
@@ -23,9 +24,6 @@ class Node:
 
         self.children = []
         self.checkNode()
-
-        
-        #print(self.movingPlayer)
 
     def checkNode(self):
         if self.P1boardNr == 100:
@@ -78,6 +76,13 @@ class Node:
         
         return string
 
+    def heuristic(self, newMoves, newBoardNr):
+        #this is the heuristic function
+        # higher score = better node
+        # for start, program is going to prioritize highest boardNr
+        # possible issue for this: might get fast to 90ish, but not have the right move
+        # to finish the game
+        return newBoardNr 
 
     def generateChildren(self, specialCases, level):
         """
@@ -100,8 +105,9 @@ class Node:
 
                     P1newMoves = deepcopy(self.P1moves)
                     P1newMoves.remove(move)
+                    score = self.heuristic(P1newMoves, P1newBoardNr)
                     node = Node(P1newMoves, self.P1name, P1newBoardNr, self.P2moves,
-                                self.P2name, self.P2boardNr, self.P2name, level)
+                                self.P2name, self.P2boardNr, self.P2name, level, score)
                     self.addChild(node)                  
                     
                 
@@ -116,8 +122,9 @@ class Node:
 
                     P2newMoves = deepcopy(self.P2moves)
                     P2newMoves.remove(move)
+                    score = self.heuristic(P2newMoves, P2newBoardNr)
                     node = Node(self.P1moves, self.P1name, self.P1boardNr, P2newMoves,
-                                self.P2name, P2newBoardNr, self.P1name, level)
+                                self.P2name, P2newBoardNr, self.P1name, level, score)
                     self.addChild(node)
 
     def generateTree(self, specialCases, level):

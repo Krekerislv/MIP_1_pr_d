@@ -127,6 +127,11 @@ class UI:
         while not self.startPlayer:
             self.startPlayer = self.chooseFirstPlayer()
         
+        #if player starts the game, wait for him, to move
+        self.waitingOnPlayer = False
+        if self.startPlayer.name == self.P1.name:
+            self.waitingOnPlayer = True
+        
 
     def updateScoreboard(self):
         # Draw the player position and avalable moves at the bottom
@@ -200,6 +205,13 @@ class UI:
             self.P1.pos = (x-space,y)
             self.P2.pos = (x+space,y)
         
+
+        #
+        if self.waitingOnPlayer:
+            pass
+
+
+
         # Update the display
         self.window.blit(self.board_img, (0, 0))
         #draw players and scoreboard

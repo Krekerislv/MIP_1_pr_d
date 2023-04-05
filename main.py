@@ -13,9 +13,10 @@ if __name__ == "__main__":
     
     tree = TreeProcessor.Tree(ui.specialCases, ui.posDict, startState)
     tree.generateTree()
-    tree.saveTree()
+    #tree.saveTree()
 
 
     #Game loop
     while True:
         ui.update()
+        
