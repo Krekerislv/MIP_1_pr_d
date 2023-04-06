@@ -39,6 +39,10 @@ if __name__ == "__main__":
             
         
         if not ui.waitingOnPlayer and not ui.GameOver:
+            #temp code:
+            if moveNr == 0 and ui.startPlayer.name=="CPU":
+                moveNr = 1
+
             moveToBoardNr = path[moveNr].P2boardNr
             print(f"cpu going to: {moveToBoardNr}")
             if not ui.P2.updatePos(moveToBoardNr):

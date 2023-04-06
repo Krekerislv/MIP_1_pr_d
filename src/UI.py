@@ -149,115 +149,51 @@ class UI:
         self.window.blit(P1_moves_str, (10, self.HEIGHT - self.scoreBoardHeight//2))
         self.window.blit(P2_moves_str, (self.WIDTH //2, self.HEIGHT - self.scoreBoardHeight//2))
 
-    def update(self):
-        # Handle events
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                sys.exit()
-            elif event.type == pygame.MOUSEBUTTONDOWN:
-                #process user choice on first player
-                if self.mouseOn_ch1_sur:
-                    self.P1.allowMove = True
-                    self.P2.allowMove = False
-                    self.mouseOn_ch1_sur = False
-                elif self.mouseOn_ch2_sur:
-                    self.P1.allowMove = False
-                    self.P2.allowMove = True
-                    self.mouseOn_ch2_sur = False
-
-                #get selected player (P1, P2 or None)
-                selPlayer = self.getSelectedPlayer()
-                if (selPlayer):
-                    selPlayer.selected = True
-
-
-                #if player was selected with previous mouse click, move it to clicked tile
-                if self.P1.selected:
-                    self.P1.drawAvailableMoves()
-                    if self.P1.updatePos(self.getClickedTile()):
-                        #deselect player after click but only if piece was moved
-                        self.P1.selected = False
-                        self.P1.allowMove = False
-                        self.P2.allowMove = True
-                        self.waitingOnPlayer = False
-
-                if self.P2.selected: #this code is mostly for testing since P2 is cpu
-                    self.P2.drawAvailableMoves()
-                    if self.P2.updatePos(self.getClickedTile()):
-                        #deselect player after click but only if piece was moved
-                        self.P2.selected = False
-                        self.P1.allowMove = True
-                        self.P2.allowMove = False
-                
-                if self.mouseOn_ok_sur:
-                    self.P1.setDefault()
-                    self.P2.setDefault()
-                    self.victor = None
-                    self.mouseOn_ok_sur = False
-                    self.startPlayer = None
-                    while not self.startPlayer:
-                        self.startPlayer = self.chooseFirstPlayer()
-                    if self.startPlayer.name == "CPU":
-                        self.waitingOnPlayer = False
-                    else:
-                        self.waitingOnPlayer = True
-                
-                #deselect piece after move has been made
-                if not selPlayer:
-                    self.P1.selected = False
-                    self.P2.selected = False
-
-        
-
-        #if 2 players are at the same tile, move them apart to avoid overlapping
-        if self.P1.pos == self.P2.pos:
-            x, y = self.P1.pos
-            space = 20
-            self.P1.pos = (x-space,y)
-            self.P2.pos = (x+space,y)
-
-        if self.cpuMoveDone:
-            #whenever cpu finishes move, this will execute ONCE
-
-
-            self.cpuMoveDone = False
-
-        if self.waitingOnPlayer:
-            self.P2.selected = False
+    def handlePlayerChoice(self):
+        if self.mouseOn_ch1_sur:
             self.P1.allowMove = True
             self.P2.allowMove = False
+            self.mouseOn_ch1_sur = False
+            self.GameOver = False
+        elif self.mouseOn_ch2_sur:
+            self.P1.allowMove = False
+            self.P2.allowMove = True
+            self.mouseOn_ch2_sur = False
+            self.GameOver = False
 
-        # Update the display
-        self.window.blit(self.board_img, (0, 0))
-        #draw players and scoreboard
-        self.updateScoreboard()
-        self.P1.draw()
-        self.P2.draw()
-        if self.P1.selected:
-            self.P1.drawAvailableMoves()
-        elif self.P2.selected:
-            self.P2.drawAvailableMoves()
-        
+    def updateP1(self):
+        self.P1.drawAvailableMoves()
+        if self.P1.updatePos(self.getClickedTile()):
+            #deselect player after click but only if piece was moved
+            self.P1.selected = False
+            self.P1.allowMove = False
+            self.P2.allowMove = True
+            self.waitingOnPlayer = False
 
-        if self.P1.boardNr == 100:
-            self.victor = self.P1.name
-        elif self.P2.boardNr == 100:
-            self.victor = self.P2.name
-        if self.victor:
-            self.showVictoryPopup(f"{self.victor} wins!","Huraay!")
-            self.GameOver = True
+    def updateP2(self):
+        self.P2.drawAvailableMoves()
+        if self.P2.updatePos(self.getClickedTile()):
+            #deselect player after click but only if piece was moved
+            #self.P2.selected = False
+            #self.P1.allowMove = True
+            #self.P2.allowMove = False
+            #FOR DEBUG:
+            self.cpuMoveDone = True
 
-        if not self.P1.canMove and not self.victor:
-            self.showVictoryPopup(f"{self.P1.name} loses!", "Ok ):" )
-            self.GameOver = True
-        if not self.P2.canMove and not self.victor:
-            self.showVictoryPopup(f"{self.P1.name} wins!", "Huraay!" )
-            self.GameOver = True
-        
-        if not self.P1.allowMove and not self.P2.allowMove:
-            self.chooseFirstPlayer()
-        pygame.display.update()
+    def resetStartState(self):
+        self.P1.setDefault()
+        self.P2.setDefault()
+        self.victor = None
+        self.mouseOn_ok_sur = False
+        self.startPlayer = None
+        while not self.startPlayer:
+            self.startPlayer = self.chooseFirstPlayer()
+        if self.startPlayer.name == "CPU":
+            self.waitingOnPlayer = False
+        else:
+            self.waitingOnPlayer = True
+        self.cpuMoveDone = False
+        self.GameOver = False
 
     def generatePosMatrix(self):
         width = 10
@@ -393,4 +329,91 @@ class UI:
                     return self.P2
                 else:
                     return None
+        pygame.display.update()
+
+    def handleMouseClick(self):
+        #process user choice on first player
+        if self.GameOver:
+            self.handlePlayerChoice()
+
+        #get selected player piece (P1, P2 or None)
+        selPlayer = self.getSelectedPlayer()
+        if (selPlayer):
+            selPlayer.selected = True
+
+        #if player was selected with previous mouse click, move it to clicked tile
+        if self.P1.selected:
+            self.updateP1()
+
+        if self.P2.selected: #this code is mostly for testing since P2 is cpu
+            self.updateP2()
+        
+        #if player presses button at game end, reset to start state
+        if self.mouseOn_ok_sur:
+            self.resetStartState()
+        
+        #deselect piece after move has been made
+        if not selPlayer:
+            self.P1.selected = False
+            self.P2.selected = False
+
+    def update(self):
+        # Handle events
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                self.handleMouseClick()
+
+        
+
+        #if 2 players are at the same tile, move them apart to avoid overlapping
+        if self.P1.pos == self.P2.pos:
+            x, y = self.P1.pos
+            space = 20
+            self.P1.pos = (x-space,y)
+            self.P2.pos = (x+space,y)
+
+        if self.cpuMoveDone:
+            #whenever cpu finishes move, this will execute ONCE
+
+            #allow Player to move
+            self.P2.selected = False
+            self.P1.allowMove = True
+            self.P2.allowMove = False
+            print("exec")
+            self.cpuMoveDone = False
+
+        #if self.waitingOnPlayer:
+
+
+        # Update the display
+        self.window.blit(self.board_img, (0, 0))
+        #draw players and scoreboard
+        self.updateScoreboard()
+        self.P1.draw()
+        self.P2.draw()
+        if self.P1.selected:
+            self.P1.drawAvailableMoves()
+        elif self.P2.selected:
+            self.P2.drawAvailableMoves()
+        
+        #if one of players have finished, end game
+        if self.P1.boardNr == 100:
+            self.victor = self.P1.name
+        elif self.P2.boardNr == 100:
+            self.victor = self.P2.name
+        if self.victor:
+            self.showVictoryPopup(f"{self.victor} wins!","Huraay!")
+            self.GameOver = True
+
+        #if one of the player runs out of possible moves
+        if not self.P1.canMove and not self.victor:
+            self.showVictoryPopup(f"{self.P1.name} loses!", "Ok ):" )
+            self.GameOver = True
+        if not self.P2.canMove and not self.victor:
+            self.showVictoryPopup(f"{self.P1.name} wins!", "Huraay!" )
+            self.GameOver = True
+        
         pygame.display.update()
