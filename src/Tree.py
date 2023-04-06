@@ -3,17 +3,17 @@ from copy import deepcopy
 LIMIT = 5 #depth limit
 
 class Node:
-    def __init__(self, P1moves, P1name, P1boardNr, P2moves, P2name, P2boardNr, startPlayer, level, score):
-        self.P1moves = P1moves
+    def __init__(self, P1moves, P1name, P1boardNr, P2moves, P2name, P2boardNr, movingPlayer, level, score):
+        self.P1moves = P1moves #player
         self.P1name = P1name
         self.P1boardNr = P1boardNr
         self.level = level
-        self.P2moves = P2moves
+        self.P2moves = P2moves #cpu
         self.P2name = P2name
         self.P2boardNr = P2boardNr
         self.score = score
 
-        self.movingPlayer = startPlayer #name of starting player
+        self.movingPlayer = movingPlayer #name of starting player
 
         self.P1_lose = False
         self.P2_lose = False
@@ -90,7 +90,7 @@ class Node:
             1) each Node can have 0,1,2,3,4,5 or 6 children
         """
 
-        if self.isTerminal and  (self.P1_win  or  self.P2_win):
+        if self.isTerminal:# and  (self.P1_win  or  self.P2_win):
             return
         
         
@@ -108,6 +108,8 @@ class Node:
                     score = self.heuristic(P1newMoves, P1newBoardNr)
                     node = Node(P1newMoves, self.P1name, P1newBoardNr, self.P2moves,
                                 self.P2name, self.P2boardNr, self.P2name, level, score)
+                    if level == 0:
+                        print("what")
                     self.addChild(node)                  
                     
                 
@@ -125,16 +127,21 @@ class Node:
                     score = self.heuristic(P2newMoves, P2newBoardNr)
                     node = Node(self.P1moves, self.P1name, self.P1boardNr, P2newMoves,
                                 self.P2name, P2newBoardNr, self.P1name, level, score)
+                    if level == 0:
+                        print("what")
                     self.addChild(node)
 
-    def generateTree(self, specialCases, level):
+    def generateTree(self, specialCases, limit):
+        
+        if self.level >= limit:
+            #print("returning")
+            return
+        
+        self.generateChildren(specialCases, self.level+1)
 
-        self.generateChildren(specialCases, level)
-        level += 1
         for child in self.children:
-            if level <= LIMIT:
-                child.generateTree(specialCases, level)
-
+            #if level <= limit:
+            child.generateTree(specialCases, limit)
 
     def printTree(self, **kwargs):
         indentCount = 0
@@ -147,6 +154,7 @@ class Node:
 
         
         indent = "\t"*indentCount
+        #print(f'writing: {indent+self.generateNodeInfo()}')
         file.write(indent+self.generateNodeInfo()+"\n")
 
         for child in self.children:
@@ -156,16 +164,35 @@ class Tree:
     def __init__(self, specialCases, gameMatrix, root):
         self.specialCases = specialCases
         self.gameMatrix = gameMatrix
-        self.root = root
-
-        #self.allNodes = [root]
-
+        self.root = root    
            
-    def generateTree(self):
-        self.root.generateTree(self.specialCases,1)
+    def generateTree(self, node, limit=5):
+        node.generateTree(self.specialCases, limit)
     
-    def saveTree(self):
-        f = open("tree.txt", "w", encoding="utf-8")
-        self.root.printTree(file=f)
+    def saveTree(self, node, fileName):
+        f = open(fileName, "w", encoding="utf-8")
+        node.printTree(file=f)
         f.close()
 
+    def minimax(self, node, level=5, maximizing_player=True, path=[]):
+        if level == 0 or node.isTerminal:
+            return node.score, path
+
+        if maximizing_player:
+            best_value = float('-inf')
+            best_path = None
+            for child in node.children:
+                child_value, child_path = self.minimax(child, level - 1, False, path + [child])
+                if child_value > best_value:
+                    best_value = child_value
+                    best_path = child_path
+            return best_value, best_path
+        else:
+            best_value = float('inf')
+            best_path = None
+            for child in node.children:
+                child_value, child_path = self.minimax(child, level - 1, True, path + [child])
+                if child_value < best_value:
+                    best_value = child_value
+                    best_path = child_path
+            return best_value, best_path

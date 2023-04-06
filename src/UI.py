@@ -49,7 +49,7 @@ class Player:
         for i in self.moves:
             if self.boardNr + i <= 100:
                 self.canMove = True
-
+        
         return rtrnFlag
     
     def drawAvailableMoves(self):
@@ -122,16 +122,19 @@ class UI:
         self.mouseOn_ch1_sur = False
         self.mouseOn_ch2_sur = False
         
+        #get start player before the loop in main.py starts
         self.startPlayer = None
-
         while not self.startPlayer:
             self.startPlayer = self.chooseFirstPlayer()
         
-        #if player starts the game, wait for him, to move
+        #if player starts the game, wait for move
         self.waitingOnPlayer = False
         if self.startPlayer.name == self.P1.name:
             self.waitingOnPlayer = True
+        self.GameOver = False
         
+        #a flag that indicates when cpu has made a move
+        self.cpuMoveDone = False  
 
     def updateScoreboard(self):
         # Draw the player position and avalable moves at the bottom
@@ -177,8 +180,9 @@ class UI:
                         self.P1.selected = False
                         self.P1.allowMove = False
                         self.P2.allowMove = True
+                        self.waitingOnPlayer = False
 
-                if self.P2.selected:
+                if self.P2.selected: #this code is mostly for testing since P2 is cpu
                     self.P2.drawAvailableMoves()
                     if self.P2.updatePos(self.getClickedTile()):
                         #deselect player after click but only if piece was moved
@@ -191,12 +195,20 @@ class UI:
                     self.P2.setDefault()
                     self.victor = None
                     self.mouseOn_ok_sur = False
-
+                    self.startPlayer = None
+                    while not self.startPlayer:
+                        self.startPlayer = self.chooseFirstPlayer()
+                    if self.startPlayer.name == "CPU":
+                        self.waitingOnPlayer = False
+                    else:
+                        self.waitingOnPlayer = True
+                
+                #deselect piece after move has been made
                 if not selPlayer:
                     self.P1.selected = False
                     self.P2.selected = False
 
-               
+        
 
         #if 2 players are at the same tile, move them apart to avoid overlapping
         if self.P1.pos == self.P2.pos:
@@ -204,13 +216,17 @@ class UI:
             space = 20
             self.P1.pos = (x-space,y)
             self.P2.pos = (x+space,y)
-        
 
-        #
+        if self.cpuMoveDone:
+            #whenever cpu finishes move, this will execute ONCE
+
+
+            self.cpuMoveDone = False
+
         if self.waitingOnPlayer:
-            pass
-
-
+            self.P2.selected = False
+            self.P1.allowMove = True
+            self.P2.allowMove = False
 
         # Update the display
         self.window.blit(self.board_img, (0, 0))
@@ -230,11 +246,14 @@ class UI:
             self.victor = self.P2.name
         if self.victor:
             self.showVictoryPopup(f"{self.victor} wins!","Huraay!")
+            self.GameOver = True
 
         if not self.P1.canMove and not self.victor:
             self.showVictoryPopup(f"{self.P1.name} loses!", "Ok ):" )
+            self.GameOver = True
         if not self.P2.canMove and not self.victor:
             self.showVictoryPopup(f"{self.P1.name} wins!", "Huraay!" )
+            self.GameOver = True
         
         if not self.P1.allowMove and not self.P2.allowMove:
             self.chooseFirstPlayer()
