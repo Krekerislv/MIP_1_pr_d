@@ -19,7 +19,8 @@ class Player:
         self.allowMove = False #controls player turns
         self.canMove = True #indicates if possible moves are available
         self.specialCases = specialCases
-        self.draw()   
+        self.takenSpecialCase = None #endpoint
+        self.draw()  
     
     def draw(self):
         if self.selected:
@@ -27,16 +28,23 @@ class Player:
         else:
             pygame.draw.circle(self.window, self.color,  self.pos,  self.radius)
 
-    def updatePos(self, newBoardNr):
+    def updatePos(self, newBoardNr, takenSpecialCase=None):
         rtrnFlag = False
         move = newBoardNr - self.boardNr
         if move in self.moves:
             self.boardNr = newBoardNr
             self.pos = self.gameMatrix[self.boardNr]
 
-            if self.boardNr in list(self.specialCases):
+            if takenSpecialCase:
+                if self.boardNr in list(self.specialCases):
+                    if not takenSpecialCase == self.specialCases[self.boardNr]:
+                        self.boardNr = self.specialCases[self.boardNr]
+                        self.pos = self.gameMatrix[self.boardNr]
+
+            elif self.boardNr in list(self.specialCases):
                 self.boardNr = self.specialCases[self.boardNr]
                 self.pos = self.gameMatrix[self.boardNr]
+                
 
             self.moves.remove(move)
             if len(self.moves) == 0:
@@ -134,7 +142,7 @@ class UI:
         self.GameOver = False
         
         #a flag that indicates when cpu has made a move
-        self.cpuMoveDone = False  
+        self.cpuMoveDone = False 
 
     def updateScoreboard(self):
         # Draw the player position and avalable moves at the bottom
@@ -163,7 +171,7 @@ class UI:
 
     def updateP1(self):
         self.P1.drawAvailableMoves()
-        if self.P1.updatePos(self.getClickedTile()):
+        if self.P1.updatePos(self.getClickedTile(), self.P2.takenSpecialCase):
             #deselect player after click but only if piece was moved
             self.P1.selected = False
             self.P1.allowMove = False
@@ -172,7 +180,7 @@ class UI:
 
     def updateP2(self):
         self.P2.drawAvailableMoves()
-        if self.P2.updatePos(self.getClickedTile()):
+        if self.P2.updatePos(self.getClickedTile(), self.P1.takenSpecialCase):
             #deselect player after click but only if piece was moved
             #self.P2.selected = False
             #self.P1.allowMove = True
@@ -356,38 +364,8 @@ class UI:
         if not selPlayer:
             self.P1.selected = False
             self.P2.selected = False
-
-    def update(self):
-        # Handle events
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                sys.exit()
-            elif event.type == pygame.MOUSEBUTTONDOWN:
-                self.handleMouseClick()
-
-        
-
-        #if 2 players are at the same tile, move them apart to avoid overlapping
-        if self.P1.pos == self.P2.pos:
-            x, y = self.P1.pos
-            space = 20
-            self.P1.pos = (x-space,y)
-            self.P2.pos = (x+space,y)
-
-        if self.cpuMoveDone:
-            #whenever cpu finishes move, this will execute ONCE
-
-            #allow Player to move
-            self.P2.selected = False
-            self.P1.allowMove = True
-            self.P2.allowMove = False
-            print("exec")
-            self.cpuMoveDone = False
-
-        #if self.waitingOnPlayer:
-
-
+    
+    def updateDisplay(self):
         # Update the display
         self.window.blit(self.board_img, (0, 0))
         #draw players and scoreboard
@@ -398,7 +376,8 @@ class UI:
             self.P1.drawAvailableMoves()
         elif self.P2.selected:
             self.P2.drawAvailableMoves()
-        
+
+    def handleVictory(self):
         #if one of players have finished, end game
         if self.P1.boardNr == 100:
             self.victor = self.P1.name
@@ -415,5 +394,62 @@ class UI:
         if not self.P2.canMove and not self.victor:
             self.showVictoryPopup(f"{self.P1.name} wins!", "Huraay!" )
             self.GameOver = True
+
+    #if 2 players can access same tile, prevent that
+    def handlePlayerMoves(self):
+        for moveP1 in self.P1.moves:
+            #case 1: it can be directly equal to P2 boardNr
+            if self.P1.boardNr + moveP1 == self.P2.boardNr:
+                self.P1.moves.remove(moveP1)
+            
+        #case 2: P2 is at specialCase endpoint:
+        if self.P2.boardNr in list(self.specialCases.values()):
+            self.P2.takenSpecialCase = self.P2.boardNr
+        else:
+            self.P2.takenSpecialCase = None
+
+        for moveP2 in self.P2.moves:
+            #case 1: it can be directly equal to P2 boardNr
+            if self.P2.boardNr + moveP2 == self.P1.boardNr:
+                self.P2.moves.remove(moveP2)
         
+        #case 2: P1 is at specialCase endpoint:
+        if self.P1.boardNr in list(self.specialCases.values()):
+            self.P1.takenSpecialCase = self.P1.boardNr
+        else:
+            self.P1.takenSpecialCase = None
+
+        
+            
+
+    def update(self):
+        # Handle events
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                self.handleMouseClick()
+
+        self.handlePlayerMoves()
+
+        #if 2 players are at the same tile, move them apart to avoid overlapping
+        if self.P1.pos == self.P2.pos:
+            x, y = self.P1.pos
+            space = 20
+            self.P1.pos = (x-space,y)
+            self.P2.pos = (x+space,y)
+
+        if self.cpuMoveDone:
+            #whenever cpu finishes move, this will execute ONCE
+
+            #allow Player to move
+            self.P2.selected = False
+            self.P1.allowMove = True
+            self.P2.allowMove = False
+            self.cpuMoveDone = False
+
+
+        self.updateDisplay()
+        self.handleVictory()
         pygame.display.update()

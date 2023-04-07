@@ -13,7 +13,7 @@ if __name__ == "__main__":
     
     tree = TreeProcessor.Tree(ui.specialCases, ui.posDict, startState)
     tree.generateTree(startState)
-    tree.saveTree(startState, "tree.txt")
+    #tree.saveTree(startState, "tree.txt")
 
     moveNr = 0
     if ui.startPlayer.name == "CPU":
@@ -28,7 +28,7 @@ if __name__ == "__main__":
     curLevel = 0
     while True:
         ui.update()
-        
+        '''
         if ui.GameOver:
             tree.generateTree(startState)
             path = tree.minimax(startState)[1]
@@ -55,9 +55,9 @@ if __name__ == "__main__":
             curLevel += 2
             if moveNr >= len(path):
                 tree.generateTree(path[-1],  limit=len(path) + 5)
-                tree.saveTree(path[-1], "tree"+str(curLevel)+".txt")
+                #tree.saveTree(path[-1], "tree"+str(curLevel)+".txt")
                 path = tree.minimax(path[-1], path=path)[1]
             ui.waitingOnPlayer = True
             ui.cpuMoveDone = True
-
+    '''
         
