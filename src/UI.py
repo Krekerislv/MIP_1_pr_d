@@ -36,15 +36,16 @@ class Player:
             self.pos = self.gameMatrix[self.boardNr]
 
             if takenSpecialCase:
-                if self.boardNr in list(self.specialCases):
-                    if not takenSpecialCase == self.specialCases[self.boardNr]:
-                        self.boardNr = self.specialCases[self.boardNr]
-                        self.pos = self.gameMatrix[self.boardNr]
+                if newBoardNr in list(self.specialCases.keys()):
+                    if  takenSpecialCase != self.specialCases[newBoardNr]:
+                        newBoardNr = self.specialCases[newBoardNr]
+                        self.pos = self.gameMatrix[newBoardNr]
 
-            elif self.boardNr in list(self.specialCases):
-                self.boardNr = self.specialCases[self.boardNr]
-                self.pos = self.gameMatrix[self.boardNr]
-                
+            elif newBoardNr in list(self.specialCases):
+                newBoardNr = self.specialCases[newBoardNr]
+                self.pos = self.gameMatrix[newBoardNr]
+            
+            self.boardNr = newBoardNr
 
             self.moves.remove(move)
             if len(self.moves) == 0:
@@ -141,8 +142,9 @@ class UI:
             self.waitingOnPlayer = True
         self.GameOver = False
         
-        #a flag that indicates when cpu has made a move
+        #a flag that indicates when player has made a move
         self.cpuMoveDone = False 
+        self.playerMoveDone = False
 
     def updateScoreboard(self):
         # Draw the player position and avalable moves at the bottom
@@ -177,6 +179,7 @@ class UI:
             self.P1.allowMove = False
             self.P2.allowMove = True
             self.waitingOnPlayer = False
+            self.playerMoveDone = True
 
     def updateP2(self):
         self.P2.drawAvailableMoves()
@@ -447,6 +450,8 @@ class UI:
             self.P2.selected = False
             self.P1.allowMove = True
             self.P2.allowMove = False
+
+            self.playerMoveDone = False
             self.cpuMoveDone = False
 
 
