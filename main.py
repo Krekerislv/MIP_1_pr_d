@@ -5,128 +5,132 @@ if __name__ == "__main__":
     # Create a new UI object
     ui = src.UI.UI("Snakes and Ladders")
 
+    ui.initPlayer("Player", (0,120,0))
+    ui.initPlayer("CPU", (0,0,120))
+    ui.updateScoreboard()
+
+
     #Player = maximizer
     #CPU = minimizer
+    #this flag is true if player(maximizer starts game)
+    ui.chooseFirstPlayer()
     maximizingPlayer = True
-    moveNr = 0
-    if ui.startPlayer.name == "CPU":
+    if ui.startPlayer.name == ui.CPU.name:
         ui.waitingOnPlayer = False
         maximizingPlayer = False
     else:
         ui.waitingOnPlayer = True
 
      #create start state
-    startState = TreeProcessor.Node(ui.P1.moves, ui.P1.name, ui.P1.boardNr,
-                                    ui.P2.moves, ui.P2.name, ui.P2.boardNr,
+    startState = TreeProcessor.Node(ui.Player.moves, ui.Player.name, ui.Player.boardNr,
+                                    ui.CPU.moves, ui.CPU.name, ui.CPU.boardNr,
                                     ui.startPlayer.name)
     
+    #create a tree object
     tree = TreeProcessor.Tree(ui.specialCases, ui.posDict, startState)
+
+    #generate tree starting from startState (default depth = 5 (edit at Tree.py line 3))
     tree.generateTree(startState)
+
+    #apply minimax for generated tree (set "minimaxScore" for all nodes)
     tree.minimax(startState, maximizing_player=maximizingPlayer)
     tree.saveTree(startState, "tree.txt")
  
 
     # MAIN game loop
-    
+    #moveNr = 0
     currentNode = startState
-    k = 1 #variable to help keep track of tree generation
-    gameReset = False
-    while True:
-        ui.update()
-        
-        #handels game end events
-        if ui.GameOver and not gameReset:
-            print("Game Over!")
-            tree.generateTree(startState)
-            tree.minimax(startState,  maximizing_player=maximizingPlayer)
-            moveNr = 0
-            ui.GameOver = False
-            ui.waitingOnPlayer = True
-            gameReset = True
-            ui.victor = None
-        
-        #setup maximizing player and minimizing player
-        if ui.waitingOnPlayer:
-            maximizingPlayer = True
-            if ui.startPlayer.name == "CPU":
-                maximizingPlayer = False
+   # k = 1 #variable to help keep track of tree generation
+    regenTreeFlag = True #flag for tree generation at beginning of game
+    #a variable that ensures that cpu moves only in nex main loop
+    loopHelper = False
 
+    printFlag = True
+    while True:
+
+
+         #check if start state is terminal
+        if currentNode.isTerminal:
+            #print("Game Over")
+            if currentNode.P1_win:
+                ui.victor = [currentNode.P1name + " wins!", "Huraay!"]
+            elif currentNode.P2_win:
+                ui.victor = [currentNode.P2name +" wins!", "Ok ):"]
+            ui.GameOver = True
+            ui.update()
+            if ui.waitingOnPlayer:
+                continue
+            print("ova here")
+
+        #if game is over
+        if ui.GameOver:
+            ui.startPlayer = False
+            ui.waitingOnPlayer = True
+            if regenTreeFlag:
+                print("regen tree")
+                tree.generateTree(startState)
+                tree.minimax(startState,  maximizing_player=maximizingPlayer)
+                currentNode = startState
+                regenTreeFlag = False
+            
+            
+            #also resets GameOver
+            ui.chooseFirstPlayer()
+            
+       
+
+        
         #if maximum depth is reached, need to generate more levels
-        if  currentNode.level == k * TreeProcessor.LIMIT - k:
-            print("Expanding tree!")
+        if printFlag:
+            print(f"Checking expansion")
+            print(f"current level = {currentNode.level}")
+            printFlag = False
+        #if  currentNode.level % TreeProcessor.LIMIT == 0 and currentNode.level > 0:
+        if not currentNode.children:
+            #print("\nExpanding tree!\n")
             tree.generateTree(currentNode,  limit=currentNode.level + TreeProcessor.LIMIT)
-            #path = tree.minimax(path[-1], path=path)[1]
             tree.minimax(currentNode, maximizing_player=maximizingPlayer)
             tree.saveTree(currentNode, "tree"+str(currentNode.level)+".txt")
-            k += 1
-            
+           # k += 1
 
-        #handles events after player moves
+
         if ui.playerMoveDone:
-            #check current state (is terminal)
-            if currentNode.isTerminal:
-                ui.GameOver = True
-                print("GAME OVER!")
-                if currentNode.P1_win:
-                    ui.victor = currentNode.P1name
-                else:
-                    ui.victor = currentNode.P2name
-                continue
-
-            gameReset = False
+            loopHelper = False
             tmp = currentNode.P1boardNr
-
-            moveNr += 1
+            tmpState = currentNode
             for child in currentNode.children:
-                if child.P1boardNr == ui.P1.boardNr:
+                if child.P1boardNr == ui.Player.boardNr:
+                    print("state updated")       
                     currentNode = child
-            print(f"Player going from {tmp} to: {currentNode.P1boardNr}")
+                print(f"{child.P1boardNr} - {ui.Player.boardNr}")
+            if tmpState == currentNode:
+                print("Error finding new state for player")
+                print(f"Player pos: {ui.Player.boardNr}")
+                break
             
+            ui.updatePlayerProperties("Player", ui.Player.boardNr, currentNode.P1moves)
+            ui.updatePlayerProperties("CPU", currentNode.P2boardNr, currentNode.P2moves)
             ui.playerMoveDone = False
-    
-            #print(f"Positions according to tree:\nCPU: {currentNode.P2boardNr}, Player: {currentNode.P1boardNr}")
+            print(f"\nPlayer moved from {tmp} to {ui.Player.boardNr} (level: {currentNode.level})")
+            #print(f"newBoardNr: {currentNode.P1boardNr}")
+            print(f"new Player moves = {currentNode.P1moves}")
+            print(f"new CPU moves = {currentNode.P2moves}")
 
+            printFlag = True
 
-        #moves cpu piece
-        if not ui.waitingOnPlayer and not ui.GameOver:
-            
-
-            #print(f"Positions according to tree:\nCPU: {currentNode.P2boardNr}, Player: {currentNode.P1boardNr}")
-            gameReset = False
-            tmp =  currentNode.P2boardNr
-
+        if not ui.waitingOnPlayer and loopHelper:
+            tmp = currentNode.P2boardNr
             currentNode = min(currentNode.children, key= lambda x : x.minimaxScore )
-
-            #check current state (is terminal)
-            if currentNode.isTerminal:
-                ui.GameOver = True
-                print("GAME OVER!")
-                if currentNode.P1_win:
-                    ui.victor = currentNode.P1name
-                else:
-                    ui.victor = currentNode.P2name
-                continue
-
-            moveToBoardNr = currentNode.P2boardNr
-
-            CPU_moved = True
-            if not ui.P2.updatePos(moveToBoardNr):
-                CPU_moved = False
-                #position update might fail because piece might have climbed the ladders or slid down a snake
-                # have to check for these special cases
-                if moveToBoardNr in list(ui.specialCases.values()):
-                    moveToBoardNr = list(ui.specialCases.keys())[list(ui.specialCases.values()).index(moveToBoardNr)]
-                    CPU_moved = ui.P2.updatePos(moveToBoardNr)
-
-            if CPU_moved:
-                print(f"CPU going from {tmp} to: {moveToBoardNr}")
-            else:
-                print(f"CPU failed going from {tmp} to: {moveToBoardNr}")
-
             
-            moveNr += 1
-            
+            ui.updatePlayerProperties("CPU", currentNode.P2boardNr, currentNode.P2moves)
+            ui.updatePlayerProperties("Player", currentNode.P1boardNr, currentNode.P1moves)
             ui.waitingOnPlayer = True
-            ui.cpuMoveDone = True
-    
+            print(f"\nCPU moved from {tmp} to {currentNode.P2boardNr} (level: {currentNode.level})")
+            print(f"new Player moves = {currentNode.P1moves}")
+            print(f"new CPU moves = {currentNode.P2moves}")
+            
+            printFlag = True
+
+        loopHelper = True
+        ui.update()
         

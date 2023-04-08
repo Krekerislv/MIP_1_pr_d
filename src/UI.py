@@ -6,18 +6,17 @@ import sys
 os.chdir(os.path.split(__file__)[0])
 
 class Player:
-    def __init__(self, name, gameMatrix, boardNr, radius, color, window, specialCases):
+    def __init__(self, name, posDict, boardNr, radius, color, window, specialCases):
         self.name = name
-        self.gameMatrix = gameMatrix
+        self.posDict = posDict
         self.boardNr = boardNr
-        self.pos = self.gameMatrix[boardNr]
+        self.pos = self.posDict[boardNr]
         self.radius = radius
         self.color = color
         self.window = window
         self.moves = [1,2,3,4,5,6]
         self.selected = False
         self.allowMove = False #controls player turns
-        self.canMove = True #indicates if possible moves are available
         self.specialCases = specialCases
         self.takenSpecialCase = None #endpoint
         self.draw()  
@@ -28,50 +27,42 @@ class Player:
         else:
             pygame.draw.circle(self.window, self.color,  self.pos,  self.radius)
 
-    def updatePos(self, newBoardNr, takenSpecialCase=None):
-        rtrnFlag = False
-        move = newBoardNr - self.boardNr
-        if move in self.moves:
-            self.boardNr = newBoardNr
-            self.pos = self.gameMatrix[self.boardNr]
-
-            if takenSpecialCase:
+    def updatePos(self, newBoardNr, takenSpecialCase=-1):
+        if self.name == "Player": #if player moved, do additional check
+            if newBoardNr == self.boardNr:
+                return False
+        
+            move = newBoardNr - self.boardNr
+            if move in self.moves:
                 if newBoardNr in list(self.specialCases.keys()):
                     if  takenSpecialCase != self.specialCases[newBoardNr]:
                         newBoardNr = self.specialCases[newBoardNr]
-                        self.pos = self.gameMatrix[newBoardNr]
-
-            elif newBoardNr in list(self.specialCases):
-                newBoardNr = self.specialCases[newBoardNr]
-                self.pos = self.gameMatrix[newBoardNr]
-            
+                
+                self.pos = self.posDict[newBoardNr]
+                self.boardNr = newBoardNr
+                return True
+        else:
+            if newBoardNr in list(self.specialCases.keys()):
+                if  takenSpecialCase != self.specialCases[newBoardNr]:
+                    newBoardNr = self.specialCases[newBoardNr]
+                
+            self.pos = self.posDict[newBoardNr]
             self.boardNr = newBoardNr
 
-            self.moves.remove(move)
-            if len(self.moves) == 0:
-                self.moves = [1,2,3,4,5,6]
-            rtrnFlag = True
-        else:
-            rtrnFlag = False
-
-        self.canMove = False
-        for i in self.moves:
-            if self.boardNr + i <= 100:
-                self.canMove = True
-        
-        return rtrnFlag
+        #print(f"Moved {self.name}")
+                
+        return False
     
     def drawAvailableMoves(self):
         for i in self.moves:
             if self.boardNr + i <= 100:
-                pygame.draw.circle(self.window, (30,30,30),  self.gameMatrix[self.boardNr + i],  5)
+                pygame.draw.circle(self.window, (30,30,30),  self.posDict[self.boardNr + i],  5)
 
     def setDefault(self):
         self.boardNr = 1
-        self.pos = self.gameMatrix[1]
+        self.pos = self.posDict[1]
         self.moves = [1,2,3,4,5,6]
         self.selected = False
-        self.canMove = True
         self.allowMove = False
 
 class UI:
@@ -115,96 +106,67 @@ class UI:
         pygame.font.init()
         self.font = pygame.font.SysFont('Comic Sans MS', 24)
 
-        #setup players:
+        #posDict: key = boarNr, value = position (pixels)
+        #gameGrid 2d array containig respective tile nr for each mouse click: 
         self.posDict, self.gameGrid = self.generatePosMatrix()
-
-        self.P1 = Player("Player", self.posDict, 1, 15, (0,150,0), self.window, self.specialCases)
-        self.P2 = Player("CPU", self.posDict, 1, 15, (0,125,255), self.window, self.specialCases)
-
-        # Set up the background for the text at the bottom
-        self.text_bg = pygame.Surface((self.WIDTH, self.scoreBoardHeight))
-        self.text_bg.fill((0, 0, 0))
-        self.updateScoreboard()
-
-        self.victor = None
-        self.mouseOn_ok_sur = False
-        self.mouseOn_ch1_sur = False
-        self.mouseOn_ch2_sur = False
-        
-        #get start player before the loop in main.py starts
-        self.startPlayer = None
-        while not self.startPlayer:
-            self.startPlayer = self.chooseFirstPlayer()
-        
-        #if player starts the game, wait for move
-        self.waitingOnPlayer = False
-        if self.startPlayer.name == self.P1.name:
-            self.waitingOnPlayer = True
+       
+        #set init state for GameOver flag
         self.GameOver = False
+
+        #set start player to None
+        self.startPlayer = None
+        
+        #winning player
+        self.victor = None
         
         #a flag that indicates when player has made a move
         self.cpuMoveDone = False 
         self.playerMoveDone = False
 
+        # Set up the background for the text at the bottom
+        self.text_bg = pygame.Surface((self.WIDTH, self.scoreBoardHeight))
+        self.text_bg.fill((0, 0, 0))
+
+
+        self.mouseOn_ok_sur = False #flag for when game end message is clicked
+        self.mouseOn_ch1_sur = False #flag for when player chooses Player as starting player
+        self.mouseOn_ch2_sur = False #flag for when player chooses CPU as starting player
+        
     def updateScoreboard(self):
         # Draw the player position and avalable moves at the bottom
-        P1_pos_str = self.font.render(f"{self.P1.name} Position: {self.P1.boardNr}", True, (255, 255, 255))
-        P2_pos_str = self.font.render(f"{self.P2.name} Position: {self.P2.boardNr}", True, (255, 255, 255))
-        P1_moves_str = self.font.render(f"{self.P1.name} Moves: {', '.join(map(str, self.P1.moves))}", True, (255, 255, 255))
-        P2_moves_str = self.font.render(f"{self.P2.name} Moves: {', '.join(map(str, self.P2.moves))}", True, (255, 255, 255))
+        Player_pos_str = self.font.render(f"{self.Player.name} Position: {self.Player.boardNr}", True, (255, 255, 255))
+        CPU_pos_str = self.font.render(f"{self.CPU.name} Position: {self.CPU.boardNr}", True, (255, 255, 255))
+        Player_moves_str = self.font.render(f"{self.Player.name} Moves: {', '.join(map(str, self.Player.moves))}", True, (255, 255, 255))
+        CPU_moves_str = self.font.render(f"{self.CPU.name} Moves: {', '.join(map(str, self.CPU.moves))}", True, (255, 255, 255))
         self.text_bg.fill((0,0,0))
         self.window.blit(self.text_bg, (0, self.HEIGHT - self.scoreBoardHeight))
-        self.window.blit(P1_pos_str, (10, self.HEIGHT - self.scoreBoardHeight))
-        self.window.blit(P2_pos_str, (self.WIDTH //2, self.HEIGHT - self.scoreBoardHeight))
-        self.window.blit(P1_moves_str, (10, self.HEIGHT - self.scoreBoardHeight//2))
-        self.window.blit(P2_moves_str, (self.WIDTH //2, self.HEIGHT - self.scoreBoardHeight//2))
+        self.window.blit(Player_pos_str, (10, self.HEIGHT - self.scoreBoardHeight))
+        self.window.blit(CPU_pos_str, (self.WIDTH //2, self.HEIGHT - self.scoreBoardHeight))
+        self.window.blit(Player_moves_str, (10, self.HEIGHT - self.scoreBoardHeight//2))
+        self.window.blit(CPU_moves_str, (self.WIDTH //2, self.HEIGHT - self.scoreBoardHeight//2))
 
     def handlePlayerChoice(self):
+        print("handling player choice")
         if self.mouseOn_ch1_sur:
-            self.P1.allowMove = True
-            self.P2.allowMove = False
+            self.Player.allowMove = True
+            self.CPU.allowMove = False
             self.mouseOn_ch1_sur = False
-            self.GameOver = False
+            
         elif self.mouseOn_ch2_sur:
-            self.P1.allowMove = False
-            self.P2.allowMove = True
+            self.Player.allowMove = False
+            self.CPU.allowMove = True
             self.mouseOn_ch2_sur = False
-            self.GameOver = False
-
-    def updateP1(self):
-        self.P1.drawAvailableMoves()
-        if self.P1.updatePos(self.getClickedTile(), self.P2.takenSpecialCase):
-            #deselect player after click but only if piece was moved
-            self.P1.selected = False
-            self.P1.allowMove = False
-            self.P2.allowMove = True
-            self.waitingOnPlayer = False
-            self.playerMoveDone = True
-
-    def updateP2(self):
-        self.P2.drawAvailableMoves()
-        if self.P2.updatePos(self.getClickedTile(), self.P1.takenSpecialCase):
-            #deselect player after click but only if piece was moved
-            #self.P2.selected = False
-            #self.P1.allowMove = True
-            #self.P2.allowMove = False
-            #FOR DEBUG:
-            self.cpuMoveDone = True
+        
+        self.GameOver = False
 
     def resetStartState(self):
-        self.P1.setDefault()
-        self.P2.setDefault()
-        self.victor = None
+        self.Player.setDefault()
+        self.CPU.setDefault()
         self.mouseOn_ok_sur = False
         self.startPlayer = None
-        while not self.startPlayer:
-            self.startPlayer = self.chooseFirstPlayer()
-        if self.startPlayer.name == "CPU":
-            self.waitingOnPlayer = False
-        else:
-            self.waitingOnPlayer = True
         self.cpuMoveDone = False
-        self.GameOver = False
+        #self.GameOver = False
+        self.victor = None
 
     def generatePosMatrix(self):
         width = 10
@@ -235,17 +197,12 @@ class UI:
 
     def getSelectedPlayer(self):
         xPos, yPos = pygame.mouse.get_pos()
-        selPiece = None
-        if abs(xPos-self.P1.pos[0]) < self.P1.radius and abs(yPos-self.P1.pos[1]) < self.P1.radius:
-            if self.P1.allowMove:
-                selPiece = self.P1
-        elif abs(xPos-self.P2.pos[0]) < self.P2.radius and abs(yPos-self.P2.pos[1]) < self.P2.radius:
-            if self.P2.allowMove:
-                selPiece = self.P2
-
-        return selPiece
-      
+        if abs(xPos-self.Player.pos[0]) < self.Player.radius and abs(yPos-self.Player.pos[1]) < self.Player.radius:
+            if self.Player.allowMove:
+                self.Player.selected = True
+    
     def showVictoryPopup(self, msg1, msg2):
+        self.waitingOnPlayer = True
         #create a popup container
         popUp = pygame.Surface((self.width_popup, self.height_popup))
         popUp.fill((0,0,0))
@@ -280,150 +237,107 @@ class UI:
         self.window.blit(popUp, popUp_pos)
 
     def chooseFirstPlayer(self):
-        #set both to false
-        self.P1.allowMove = False
-        self.P2.allowMove = False
+        while not self.startPlayer:
+            #set both to false
+            self.Player.allowMove = False
+            self.CPU.allowMove = False
 
-        #create a new popup container
-        choicePopUp = pygame.Surface((self.width_popup, self.height_popup))
-        choicePopUp.fill((0,0,0))
-       
-        #create surfaces from text
-        choise1_surf = self.font.render(self.P1.name, True, (255,255,255))
-        choise2_surf = self.font.render(self.P2.name, True, (255,255,255))
-        question_surf = self.font.render("Choose first player!", True, (200,200,0))
-
-        #define popUp position
-        popUp_pos = (self.WIDTH //2 - choicePopUp.get_width()//2, self.HEIGHT //2 - choicePopUp.get_height()//2)
-        #define text surfaces' positions
-        choise1_pos = ((choicePopUp.get_width() - 2*choise1_surf.get_width() - choise1_surf.get_width())//2, choicePopUp.get_height()//2 )
-        choise2_pos = ((choicePopUp.get_width() + 2*choise1_surf.get_width() - choise2_surf.get_width())//2, choicePopUp.get_height()//2 )
-        question_pos = ((choicePopUp.get_width() - question_surf.get_width())//2, choicePopUp.get_height()//5 )
-
-        #get choice 1 and 2 global coordinates
-        ch1_abs_pos = (popUp_pos[0] + choise1_pos[0], popUp_pos[1] + choise1_pos[1])
-        ch2_abs_pos = (popUp_pos[0] + choise2_pos[0], popUp_pos[1] + choise2_pos[1])
-
-        mX, mY = pygame.mouse.get_pos()
-
-        #check if mouse is hovering over buttons
-        self.mouseOn_ch1_sur = mX > ch1_abs_pos[0] and mX < ch1_abs_pos[0] + choise1_surf.get_width() and mY > ch1_abs_pos[1] and mY < ch1_abs_pos[1] + self.font.get_height()
-        self.mouseOn_ch2_sur = mX > ch2_abs_pos[0] and mX < ch2_abs_pos[0] + choise2_surf.get_width() and mY > ch2_abs_pos[1] and mY < ch2_abs_pos[1] + self.font.get_height()
+            #create a new popup container
+            choicePopUp = pygame.Surface((self.width_popup, self.height_popup))
+            choicePopUp.fill((0,0,0))
         
-        #if mouse is hovering over button, change color
-        if self.mouseOn_ch1_sur:
-            choise1_surf = self.font.render(self.P1.name, True, (0,255,0))
-        elif self.mouseOn_ch2_sur:
-            choise2_surf = self.font.render(self.P2.name, True, (0,255,0))
-        
-        
-        #add elements to popup container
-        choicePopUp.blit(question_surf, question_pos)
-        choicePopUp.blit(choise1_surf, choise1_pos)
-        choicePopUp.blit(choise2_surf, choise2_pos)
+            #create surfaces from text
+            choise1_surf = self.font.render(self.Player.name, True, (255,255,255))
+            choise2_surf = self.font.render(self.CPU.name, True, (255,255,255))
+            question_surf = self.font.render("Choose first player!", True, (200,200,0))
 
-        #add popup to main window
-        self.window.blit(choicePopUp, popUp_pos)
+            #define popUp position
+            popUp_pos = (self.WIDTH //2 - choicePopUp.get_width()//2, self.HEIGHT //2 - choicePopUp.get_height()//2)
+            #define text surfaces' positions
+            choise1_pos = ((choicePopUp.get_width() - 2*choise1_surf.get_width() - choise1_surf.get_width())//2, choicePopUp.get_height()//2 )
+            choise2_pos = ((choicePopUp.get_width() + 2*choise1_surf.get_width() - choise2_surf.get_width())//2, choicePopUp.get_height()//2 )
+            question_pos = ((choicePopUp.get_width() - question_surf.get_width())//2, choicePopUp.get_height()//5 )
 
-        #this is necessary so starting player can be determined before going
-        #into while loop in main.py
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                sys.exit()
-            elif event.type == pygame.MOUSEBUTTONDOWN:
-                if self.mouseOn_ch1_sur:
-                    self.P1.allowMove = True
-                    return self.P1
-                elif self.mouseOn_ch2_sur:
-                    self.P2.allowMove = True
-                    return self.P2
-                else:
-                    return None
-        pygame.display.update()
+            #get choice 1 and 2 global coordinates
+            ch1_abs_pos = (popUp_pos[0] + choise1_pos[0], popUp_pos[1] + choise1_pos[1])
+            ch2_abs_pos = (popUp_pos[0] + choise2_pos[0], popUp_pos[1] + choise2_pos[1])
+
+            mX, mY = pygame.mouse.get_pos()
+
+            #check if mouse is hovering over buttons
+            self.mouseOn_ch1_sur = mX > ch1_abs_pos[0] and mX < ch1_abs_pos[0] + choise1_surf.get_width() and mY > ch1_abs_pos[1] and mY < ch1_abs_pos[1] + self.font.get_height()
+            self.mouseOn_ch2_sur = mX > ch2_abs_pos[0] and mX < ch2_abs_pos[0] + choise2_surf.get_width() and mY > ch2_abs_pos[1] and mY < ch2_abs_pos[1] + self.font.get_height()
+            
+            #if mouse is hovering over button, change color
+            if self.mouseOn_ch1_sur:
+                choise1_surf = self.font.render(self.Player.name, True, (0,255,0))
+            elif self.mouseOn_ch2_sur:
+                choise2_surf = self.font.render(self.CPU.name, True, (0,255,0))
+            
+            
+            #add elements to popup container
+            choicePopUp.blit(question_surf, question_pos)
+            choicePopUp.blit(choise1_surf, choise1_pos)
+            choicePopUp.blit(choise2_surf, choise2_pos)
+
+            #add popup to main window
+            self.window.blit(choicePopUp, popUp_pos)
+
+            #this is necessary so starting player can be determined before going
+            #into while loop in main.py
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    sys.exit()
+                elif event.type == pygame.MOUSEBUTTONDOWN:
+                    if self.mouseOn_ch1_sur:
+                        self.Player.allowMove = True
+                        self.waitingOnPlayer = True
+                        self.startPlayer = self.Player
+                        print("ch1")
+                        #return self.Player
+                    elif self.mouseOn_ch2_sur:
+                        self.CPU.allowMove = True
+                        self.waitingOnPlayer = False
+                        self.startPlayer = self.CPU
+                        print("ch2")
+                        #return self.CPU
+            pygame.display.update()
+        self.GameOver = False
 
     def handleMouseClick(self):
         #process user choice on first player
-        if self.GameOver:
-            self.handlePlayerChoice()
-
-        #get selected player piece (P1, P2 or None)
-        selPlayer = self.getSelectedPlayer()
-        if (selPlayer):
-            selPlayer.selected = True
+        #if self.GameOver:
+            #self.handlePlayerChoice()
 
         #if player was selected with previous mouse click, move it to clicked tile
-        if self.P1.selected:
-            self.updateP1()
+        if self.Player.selected:
+            self.Player.drawAvailableMoves()
+            if self.Player.updatePos(self.getClickedTile(), self.CPU.boardNr):
+                
+                self.Player.allowMove = False
+                self.waitingOnPlayer = False
+                self.playerMoveDone = True
+            self.Player.selected = False
 
-        if self.P2.selected: #this code is mostly for testing since P2 is cpu
-            self.updateP2()
-        
+
+        #check if player has been selected
+        self.getSelectedPlayer()
+
         #if player presses button at game end, reset to start state
         if self.mouseOn_ok_sur:
+            self.waitingOnPlayer = False
             self.resetStartState()
-        
-        #deselect piece after move has been made
-        if not selPlayer:
-            self.P1.selected = False
-            self.P2.selected = False
     
     def updateDisplay(self):
         # Update the display
         self.window.blit(self.board_img, (0, 0))
         #draw players and scoreboard
         self.updateScoreboard()
-        self.P1.draw()
-        self.P2.draw()
-        if self.P1.selected:
-            self.P1.drawAvailableMoves()
-        elif self.P2.selected:
-            self.P2.drawAvailableMoves()
-
-    def handleVictory(self):
-        #if one of players have finished, end game
-        if self.P1.boardNr == 100:
-            self.victor = self.P1.name
-        elif self.P2.boardNr == 100:
-            self.victor = self.P2.name
-        if self.victor:
-            self.showVictoryPopup(f"{self.victor} wins!","Huraay!")
-            self.GameOver = True
-
-        #if one of the player runs out of possible moves
-        if not self.P1.canMove and not self.victor:
-            self.showVictoryPopup(f"{self.P1.name} loses!", "Ok ):" )
-            self.GameOver = True
-        if not self.P2.canMove and not self.victor:
-            self.showVictoryPopup(f"{self.P1.name} wins!", "Huraay!" )
-            self.GameOver = True
-
-    #if 2 players can access same tile, prevent that
-    def handlePlayerMoves(self):
-        for moveP1 in self.P1.moves:
-            #case 1: it can be directly equal to P2 boardNr
-            if self.P1.boardNr + moveP1 == self.P2.boardNr:
-                self.P1.moves.remove(moveP1)
-            
-        #case 2: P2 is at specialCase endpoint:
-        if self.P2.boardNr in list(self.specialCases.values()):
-            self.P2.takenSpecialCase = self.P2.boardNr
-        else:
-            self.P2.takenSpecialCase = None
-
-        for moveP2 in self.P2.moves:
-            #case 1: it can be directly equal to P2 boardNr
-            if self.P2.boardNr + moveP2 == self.P1.boardNr:
-                self.P2.moves.remove(moveP2)
-        
-        #case 2: P1 is at specialCase endpoint:
-        if self.P1.boardNr in list(self.specialCases.values()):
-            self.P1.takenSpecialCase = self.P1.boardNr
-        else:
-            self.P1.takenSpecialCase = None
-
-        
-            
+        self.Player.draw()
+        self.CPU.draw()
+        if self.Player.selected:
+            self.Player.drawAvailableMoves()
 
     def update(self):
         # Handle events
@@ -434,27 +348,40 @@ class UI:
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 self.handleMouseClick()
 
-        self.handlePlayerMoves()
-
-        #if 2 players are at the same tile, move them apart to avoid overlapping
-        if self.P1.pos == self.P2.pos:
-            x, y = self.P1.pos
+        #if 2 players are at the same tile, move them apart to avoid overlapping (only possible for first tile)
+        if self.Player.pos == self.CPU.pos:
+            x, y = self.Player.pos
             space = 20
-            self.P1.pos = (x-space,y)
-            self.P2.pos = (x+space,y)
+            self.Player.pos = (x-space,y)
+            self.CPU.pos = (x+space,y)
 
-        if self.cpuMoveDone:
-            #whenever cpu finishes move, this will execute ONCE
-
+        if not self.waitingOnPlayer:
             #allow Player to move
-            self.P2.selected = False
-            self.P1.allowMove = True
-            self.P2.allowMove = False
+            self.Player.allowMove = True
+            self.CPU.allowMove = False
 
-            self.playerMoveDone = False
-            self.cpuMoveDone = False
-
+            #self.playerMoveDone = False
 
         self.updateDisplay()
-        self.handleVictory()
+        if self.victor:
+            self.showVictoryPopup(self.victor[0], self.victor[1])
         pygame.display.update()
+
+    def initPlayer(self, name,  color):
+        if name == "Player":
+            self.Player = Player("Player", self.posDict, 1, 15, color, self.window, self.specialCases)
+        elif name == "CPU":
+            self.CPU = Player("CPU", self.posDict, 1, 15, color, self.window, self.specialCases)
+        else:
+            print(f"Cannot initialize player with name: '{name}'")
+    
+    def updatePlayerProperties(self, name, newBoardNr, moves):
+        if name == "Player":
+            #self.Player.updatePos(newBoardNr)
+            self.Player.moves = moves
+        elif name == "CPU":
+            self.CPU.boardNr = newBoardNr
+            self.CPU.moves = moves
+            self.CPU.updatePos(self.CPU.boardNr)
+        else:
+            print(f"Cannot update properties for player '{name}'")

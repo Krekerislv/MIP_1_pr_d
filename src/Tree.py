@@ -32,12 +32,6 @@ class Node:
             self.P2moves = [1,2,3,4,5,6]
 
 
-        #check if players have possible moves left
-        if self.P1boardNr == 100:
-            self.P1_win = True #has won
-        elif self.P2boardNr == 100:
-            self.P2_win = True #has won
-        
         self.P1_win = True
         for move in self.P2moves:
             if move + self.P2boardNr != self.P1boardNr:
@@ -47,6 +41,12 @@ class Node:
         for move in self.P1moves:
             if move + self.P1boardNr != self.P2boardNr:
                 self.P2_win = False
+
+        #check if players have possible moves left
+        if self.P1boardNr == 100:
+            self.P1_win = True #has won
+        elif self.P2boardNr == 100:
+            self.P2_win = True #has won
 
         #if node is terminal, no further checking is necessary
         self.isTerminal = self.P1_win or self.P2_win
@@ -129,7 +129,7 @@ class Node:
                 #check if other player is at possible target
                 if boardNr + move == occupiedBoardNr:
                     #print(f"removing {self.movingPlayer} move {move} from level {self.level}")
-                    moves.remove(move)
+                    #moves.remove(move)
                     continue
         
                 #define new boardNr if target is clear
@@ -214,7 +214,7 @@ class Tree:
     def minimax(self, node, level=LIMIT, maximizing_player=True):
         if level == 0 or node.isTerminal:
             #print(f"minimax base score: {node.score}")
-
+            node.minimaxScore = node.score
             return node.score
 
         #maximizing player's turn
