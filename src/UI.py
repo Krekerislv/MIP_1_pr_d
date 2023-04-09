@@ -63,7 +63,7 @@ class Player:
         self.pos = self.posDict[1]
         self.moves = [1,2,3,4,5,6]
         self.selected = False
-        self.allowMove = False
+        #self.allowMove = False
 
 class UI:
     def __init__(self, title):
@@ -122,6 +122,7 @@ class UI:
         #a flag that indicates when player has made a move
         self.cpuMoveDone = False 
         self.playerMoveDone = False
+        self.maximizingPlayer = None # true - maximizing player starts, false - minimizing player starts
 
         # Set up the background for the text at the bottom
         self.text_bg = pygame.Surface((self.WIDTH, self.scoreBoardHeight))
@@ -144,7 +145,7 @@ class UI:
         self.window.blit(CPU_pos_str, (self.WIDTH //2, self.HEIGHT - self.scoreBoardHeight))
         self.window.blit(Player_moves_str, (10, self.HEIGHT - self.scoreBoardHeight//2))
         self.window.blit(CPU_moves_str, (self.WIDTH //2, self.HEIGHT - self.scoreBoardHeight//2))
-
+    """
     def handlePlayerChoice(self):
         print("handling player choice")
         if self.mouseOn_ch1_sur:
@@ -158,7 +159,7 @@ class UI:
             self.mouseOn_ch2_sur = False
         
         self.GameOver = False
-
+    """
     def resetStartState(self):
         self.Player.setDefault()
         self.CPU.setDefault()
@@ -166,6 +167,7 @@ class UI:
         self.startPlayer = None
         self.cpuMoveDone = False
         #self.GameOver = False
+        print("reseting victor")
         self.victor = None
 
     def generatePosMatrix(self):
@@ -197,7 +199,9 @@ class UI:
 
     def getSelectedPlayer(self):
         xPos, yPos = pygame.mouse.get_pos()
+        print("tryna get selected tile")
         if abs(xPos-self.Player.pos[0]) < self.Player.radius and abs(yPos-self.Player.pos[1]) < self.Player.radius:
+            print(f"Clicked on player. allowMove: {self.Player.allowMove}")
             if self.Player.allowMove:
                 self.Player.selected = True
     
@@ -237,8 +241,10 @@ class UI:
         self.window.blit(popUp, popUp_pos)
 
     def chooseFirstPlayer(self):
+        self.startPlayer = None
         while not self.startPlayer:
             #set both to false
+            #print("Setting to false from 245")
             self.Player.allowMove = False
             self.CPU.allowMove = False
 
@@ -291,16 +297,21 @@ class UI:
                     sys.exit()
                 elif event.type == pygame.MOUSEBUTTONDOWN:
                     if self.mouseOn_ch1_sur:
+                        #print("Setting to true from 298")
                         self.Player.allowMove = True
                         self.waitingOnPlayer = True
                         self.startPlayer = self.Player
-                        print("ch1")
+                        self.maximizingPlayer = False#True
+                        #print("ch1")
                         #return self.Player
                     elif self.mouseOn_ch2_sur:
+                        #print("Setting to false from 307")
+                        self.Player.allowMove = False
                         self.CPU.allowMove = True
                         self.waitingOnPlayer = False
                         self.startPlayer = self.CPU
-                        print("ch2")
+                        self.maximizingPlayer = True#False
+                        #print("ch2")
                         #return self.CPU
             pygame.display.update()
         self.GameOver = False
@@ -314,7 +325,7 @@ class UI:
         if self.Player.selected:
             self.Player.drawAvailableMoves()
             if self.Player.updatePos(self.getClickedTile(), self.CPU.boardNr):
-                
+                #print("Setting to false from 324")
                 self.Player.allowMove = False
                 self.waitingOnPlayer = False
                 self.playerMoveDone = True
@@ -355,8 +366,9 @@ class UI:
             self.Player.pos = (x-space,y)
             self.CPU.pos = (x+space,y)
 
-        if not self.waitingOnPlayer:
+        if self.waitingOnPlayer:
             #allow Player to move
+            #print("Setting to true from 367")
             self.Player.allowMove = True
             self.CPU.allowMove = False
 
@@ -364,6 +376,7 @@ class UI:
 
         self.updateDisplay()
         if self.victor:
+            #print("Showing victory popup")
             self.showVictoryPopup(self.victor[0], self.victor[1])
         pygame.display.update()
 

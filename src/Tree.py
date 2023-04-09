@@ -13,6 +13,7 @@ class Node:
         self.P2boardNr = P2boardNr
         self.score = score
         self.minimaxScore = minimaxScore
+        self.reason = None #a string that states the reason of win/loss
 
         self.movingPlayer = movingPlayer #name of starting player
         self.isTerminal = False
@@ -33,38 +34,42 @@ class Node:
 
 
         self.P1_win = True
+        self.reason = f"{self.P2name} has no possible moves left"
         for move in self.P2moves:
             if move + self.P2boardNr != self.P1boardNr:
                 self.P1_win = False
+                self.reason = None
         
         self.P2_win = True
+        self.reason = f"{self.P1name} has no possible moves left"
         for move in self.P1moves:
             if move + self.P1boardNr != self.P2boardNr:
                 self.P2_win = False
+                self.reason = None
 
         #check if players have possible moves left
+        for move in self.P1moves:
+            if self.P1boardNr + move <= 100 or self.P1boardNr == 100:
+                break
+            self.P2_win = True
+            self.reason = f"{self.P1name} has no possible moves left"
+
+        for move in self.P2moves:
+            if self.P2boardNr + move <= 100 or self.P2boardNr == 100:
+                break
+            self.P1_win = True
+            self.reason = f"{self.P2name} has no possible moves left"
+                
+
         if self.P1boardNr == 100:
             self.P1_win = True #has won
+            self.reason = f"{self.P1name} reached finish!"
         elif self.P2boardNr == 100:
             self.P2_win = True #has won
+            self.reason = f"{self.P2name} reached finish!"
 
         #if node is terminal, no further checking is necessary
         self.isTerminal = self.P1_win or self.P2_win
-        if self.isTerminal:
-            return
-
-        if self.P1name == self.movingPlayer:
-            self.P2_win = True
-            for move in self.P1moves:
-                if self.P1boardNr + move <= 100:
-                    self.P2_win = False
-            
-
-        elif self.P2name == self.movingPlayer:
-            self.P1_win = True
-            for move in self.P2moves:
-                if self.P2boardNr + move <= 100:
-                    self.P1_win = False      
 
     def addChild(self, node):
         self.children.append(node)
@@ -74,7 +79,12 @@ class Node:
         string += f"{self.P1name}:{self.P1boardNr}:{self.P1moves}|"
         string += f"{self.P2name}:{self.P2boardNr}:{self.P2moves}|"
         string += f"MiniMax:{self.minimaxScore}|Score:{self.score}|"
-    
+
+        if self.movingPlayer == "Player":
+            string += "MIN|"
+        else:
+            string += "MAX|"
+
         if self.isTerminal:
             string += "■"
         
@@ -84,15 +94,110 @@ class Node:
             string += f"✔{self.P2name}"
         
         return string
+    
+    def heuristic(self, P1newMoves, P2newMoves, P1newBoardNr, P2newBoardNr, movingPlayerName, specialCases):
+        #movingPlayerName refers to the previous node
+        # higher score = better node (more likely to lead to terminal node (any of them))
+        finish = 100
+        max_moves = 6
+        #set weights
+        distance_weight = 2
+        moves_weight = 2
+        ladder_weight = 5
+        ladder_distance_weight = 1.5
+        snake_distance_weight = -1.5
 
-    def heuristic(self, newMoves, newMaxBoardNr):
-        #this is the heuristic function
-        # higher score = better node
-        # for start, program is going to prioritize highest boardNr
-        # possible issue for this: might get fast to 90ish, but not have the right move
-        # to finish the game
-        return newMaxBoardNr 
+        snake_distance_weight = 2
+        snake_weight = -5
+        blocking_weight = 1
 
+        
+        #lesser the distance, the better
+        distance_p1 = P1newBoardNr
+        distance_p2 = P2newBoardNr
+
+        
+        #more available moves -> better
+        availableMovesBonus_p1 = len(P1newMoves) * moves_weight
+        availableMovesBonus_p2 = len(P2newMoves) * moves_weight
+
+        #calculate score from snakes and ladders ahead
+        # if there are ladders in front of player, score is better
+        # if ther are snakes in front of player, score is lower
+        ladder_count_p1 = 0
+        ladder_distance_p1 = 0
+        snake_count_p1 = 0
+        snake_distance_p1 = 0
+
+        ladder_count_p2 = 0
+        ladder_distance_p2 = 0
+        snake_count_p2 = 0
+        snake_distance_p2 = 0
+
+        p1_blocked_weight = 5
+        p2_blocked_weight = 5
+
+        if P1newBoardNr >= 90:
+            p1_blocked_weight = 10
+        if P2newBoardNr >= 90:
+            p2_blocked_weight = 10
+
+        for case in specialCases.keys():
+            #case - startPoint
+            #specialCases[case] - endPoint of case
+            if case > P1newBoardNr and specialCases[case] > P1newBoardNr:
+                ladder_count_p1 += 1
+                if specialCases[case] - case > ladder_distance_p1:
+                    ladder_distance_p1 = specialCases[case] - case
+
+            elif case > P1newBoardNr and specialCases[case] < P1newBoardNr:
+                snake_count_p1 += 1
+                if abs(specialCases[case] - case) > snake_distance_p1:
+                    snake_distance_p1 = abs(specialCases[case] - case)
+
+
+
+            if case > P2newBoardNr and specialCases[case] > P2newBoardNr:
+                ladder_count_p2 += 1
+                if specialCases[case] - case > ladder_distance_p2:
+                    ladder_distance_p2 = specialCases[case] - case
+
+            elif case > P2newBoardNr and specialCases[case] < P2newBoardNr:
+                snake_count_p2 += 1
+                if abs(specialCases[case] - case) > snake_distance_p2:
+                    snake_distance_p2 = abs(specialCases[case] - case)
+
+
+        #if opponent is being blocked
+        P1_possibly_blocked_count = 0
+        P2_possibly_blocked_count = 0
+        P1_all_matching = True
+        P2_all_matching = True
+        for move in P2newMoves:
+            next_p2_board_nr = P2newBoardNr + move
+            for moveP1 in P1newMoves:
+                next_p1_board_nr = P1newBoardNr + moveP1
+                if next_p1_board_nr == next_p2_board_nr:
+                    if P2newBoardNr > P1newBoardNr:
+                        P1_possibly_blocked_count += 1
+                    else:
+                        P2_possibly_blocked_count += 1
+                P1_all_matching = False
+                P2_all_matching = False
+
+       
+        P1_score = distance_weight * distance_p1 + availableMovesBonus_p1 + ladder_distance_weight * ladder_distance_p1 + snake_distance_weight * snake_distance_p1 - p1_blocked_weight *  P1_possibly_blocked_count
+        P2_score = distance_weight * distance_p2 + availableMovesBonus_p2 + ladder_distance_weight * ladder_distance_p2 + snake_distance_weight * snake_distance_p2 - p2_blocked_weight * P2_possibly_blocked_count
+
+        if movingPlayerName == "Player":
+            if P1_all_matching:
+                return float("-inf")
+            return P1_score
+        else:
+            if P2_all_matching:
+                return float("-inf")
+            return P2_score
+     
     def generateChildren(self, specialCases, level):
         """
             RULES:
@@ -161,12 +266,12 @@ class Node:
                     P1newBoardNr = self.P1boardNr
                     P2newBoardNr = newBoardNr
                 #caculate heuristic value for children node
-                childScore = self.heuristic(newMoves, max(P1newBoardNr, P2newBoardNr))
+                childScore = self.heuristic(P1newMoves, P2newMoves, P1newBoardNr, P2newBoardNr, self.movingPlayer, specialCases)
 
                 node = Node(P1newMoves, self.P1name, P1newBoardNr, P2newMoves,
                             self.P2name, P2newBoardNr, idlePlayerName, level, childScore)
-                if node not in self.children:
-                    self.addChild(node)            
+                #if node not in self.children:
+                self.addChild(node)            
     
     def generateTree(self, specialCases, limit):
         
@@ -174,8 +279,9 @@ class Node:
             return
         
         self.generateChildren(specialCases, self.level+1)
-
+        
         for child in self.children:
+            self.score = None
             #if level <= limit:
             child.generateTree(specialCases, limit)
 
@@ -209,29 +315,31 @@ class Tree:
         f = open(fileName, "w", encoding="utf-8")
         node.printTree(file=f)
         f.close()
-
-        
+              
     def minimax(self, node, level=LIMIT, maximizing_player=True):
         if level == 0 or node.isTerminal:
             #print(f"minimax base score: {node.score}")
             node.minimaxScore = node.score
+            #print(f"returning {node.score}")
             return node.score
 
-        #maximizing player's turn
+        #maximizing player's turn (CPU)
         if maximizing_player:
             max_score = -float('inf')
             for child in node.children:
                 score = self.minimax(child, level - 1, False)
-                max_score = max(max_score, score)
+                if score > max_score:
+                    max_score = score
             #print(f"setting max score {max_score}")
             node.minimaxScore = max_score
             return max_score
-        #minimizing players turn
+        #minimizing players turn (Player)
         else:
             min_score = float('inf')
             for child in node.children:
                 score = self.minimax(child, level - 1, True)
-                min_score = min(min_score, score)
+                if score < min_score:
+                    min_score = score
                 #print(f"setting min score {min_score}")
                 node.minimaxScore = min_score
             return min_score
