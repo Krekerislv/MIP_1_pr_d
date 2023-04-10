@@ -96,123 +96,118 @@ class Node:
         return string
     
     def heuristic(self, P1newMoves, P2newMoves, P1newBoardNr, P2newBoardNr, movingPlayerName, specialCases):
-        #movingPlayerName refers to the previous node
+        #self represents the current state
+        #movingPlayerName refers to the previous node (player whose move will lead to this (new) state)
         # higher score = better node (more likely to lead to terminal node (any of them))
-        finish = 100
-        max_moves = 6
-        #set weights
-        distance_weight = 2
-        moves_weight = 2
-        ladder_weight = 5
-        ladder_distance_weight = 1.5
-        snake_distance_weight = -1.5
+        """
+            Factors:
+                1) distance to finish: the closer to finish, the beter (max value = 100)
+                2) available moves: the more available moves in next state, the better (max value = 6)
+                3) ladder distance: if player climbs up a ladder in next move, state is more valuable (highest ladder = 45 tiles)
+                4) snake distance: if player slides down a snake in next move, state is less valuable (lowest slide = 43 tiles)
+                5) blocked: if player's available moves drop by more than 1, it means that it has a blocked move (maximum blocked moves = 1)
+                6) all moves blocked: if player has all moves blocked by opponent, it is guaranteed to lose. In this case score = -inf.
+                ...
+        """
+        #============WEIGHTS==============
+        distance_weight = 1
+        available_moves_weight = 1#1
+        ladder_distance_weight = 1#5
+        snake_distance_weight = -1#-5
+        blocked_weight = -0.1#1
+    
+        #=======DISTANCE TO FINISH========
+        distance_p1 = P1newBoardNr / 100
+        distance_p2 = P2newBoardNr / 100
 
-        snake_distance_weight = 2
-        snake_weight = -5
-        blocking_weight = 1
 
-        
-        #lesser the distance, the better
-        distance_p1 = P1newBoardNr
-        distance_p2 = P2newBoardNr
+        #=======AVAILABLE MOVE COUNT======
+        available_moves_p1 = len(P1newMoves) / 6
+        available_moves_p2 = len(P2newMoves) / 6
 
-        
-        #more available moves -> better
-        availableMovesBonus_p1 = len(P1newMoves) * moves_weight
-        availableMovesBonus_p2 = len(P2newMoves) * moves_weight
-
-        #calculate score from snakes and ladders ahead
-        # if there are ladders in front of player, score is better
-        # if ther are snakes in front of player, score is lower
-        ladder_count_p1 = 0
+        #========LADDER AND SNAKE DISTANCE==========
+            #specialCases contain all start and end points of snakes and ladders
+            #keys - start points, values - end points
         ladder_distance_p1 = 0
-        snake_count_p1 = 0
-        snake_distance_p1 = 0
-
-        ladder_count_p2 = 0
         ladder_distance_p2 = 0
-        snake_count_p2 = 0
+        snake_distance_p1 = 0
         snake_distance_p2 = 0
+        for startPoint in specialCases.keys():
+            endPoint = specialCases[startPoint]
 
-        p1_blocked_weight = 5
-        p2_blocked_weight = 5
+            if endPoint == P1newBoardNr:
+                # P1 has gone up a ladder or slid down a snake
+                if endPoint > startPoint:
+                    #climbed up a ladder
+                    ladder_distance_p1 = (endPoint - startPoint) / 45
+                else:
+                    #slid down a snake
+                    snake_distance_p1 = abs(endPoint - startPoint) / 43
 
-        if P1newBoardNr >= 90:
-            p1_blocked_weight = 10
-        if P2newBoardNr >= 90:
-            p2_blocked_weight = 10
-
-        for case in specialCases.keys():
-            #case - startPoint
-            #specialCases[case] - endPoint of case
-            if case > P1newBoardNr and specialCases[case] > P1newBoardNr:
-                ladder_count_p1 += 1
-                if specialCases[case] - case > ladder_distance_p1:
-                    ladder_distance_p1 = specialCases[case] - case
-
-            elif case > P1newBoardNr and specialCases[case] < P1newBoardNr:
-                snake_count_p1 += 1
-                if abs(specialCases[case] - case) > snake_distance_p1:
-                    snake_distance_p1 = abs(specialCases[case] - case)
-
+            if endPoint == P2newBoardNr:
+                 # P2 has gone up a ladder or slid down a snake
+                if endPoint > startPoint:
+                    #climbed up a ladder
+                    ladder_distance_p2 = (endPoint - startPoint) / 45
+                else:
+                    #slid down a snake
+                    snake_distance_p2 = abs(endPoint - startPoint) / 43
 
 
-            if case > P2newBoardNr and specialCases[case] > P2newBoardNr:
-                ladder_count_p2 += 1
-                if specialCases[case] - case > ladder_distance_p2:
-                    ladder_distance_p2 = specialCases[case] - case
+        #====BLOCKED AND ALL MOVES BLOCKED=================
+        P1_all_moves_blocked = True #if P1 is behind P2 and all P1's moves lead to position of P2, this will remain true
+        P2_all_moves_blocked = True #if P2 is behind P1 and all P2's moves lead to position of P1, this will remain true
+        P1_is_blocked = 0
+        P2_is_blocked = 0
 
-            elif case > P2newBoardNr and specialCases[case] < P2newBoardNr:
-                snake_count_p2 += 1
-                if abs(specialCases[case] - case) > snake_distance_p2:
-                    snake_distance_p2 = abs(specialCases[case] - case)
+        for moveP2 in P2newMoves:
+            if P2newBoardNr + moveP2 != P1newBoardNr: 
+                P2_all_moves_blocked = False
+            else:
+                P2_is_blocked = 1
 
+        for moveP1 in P1newMoves:
+            if P1newBoardNr + moveP1 != P2newBoardNr:
+                P1_all_moves_blocked = False
+            else:
+                P1_is_blocked = 1
 
-        #if opponent is being blocked
-        P1_possibly_blocked_count = 0
-        P2_possibly_blocked_count = 0
-        P1_all_matching = True
-        P2_all_matching = True
-        for move in P2newMoves:
-            next_p2_board_nr = P2newBoardNr + move
-            for moveP1 in P1newMoves:
-                next_p1_board_nr = P1newBoardNr + moveP1
-                if next_p1_board_nr == next_p2_board_nr:
-                    if P2newBoardNr > P1newBoardNr:
-                        P1_possibly_blocked_count += 1
-                    else:
-                        P2_possibly_blocked_count += 1
-                P1_all_matching = False
-                P2_all_matching = False
+        #======CALCULATE SCORE FOR EACH PLAYER=============
+        P1_score = distance_weight * distance_p1 + available_moves_weight * available_moves_p1 + ladder_distance_weight * ladder_distance_p1 + snake_distance_weight * snake_distance_p1 + blocked_weight * P1_is_blocked
+        P2_score = distance_weight * distance_p2 + available_moves_weight * available_moves_p2 + ladder_distance_weight * ladder_distance_p2 + snake_distance_weight * snake_distance_p2 + blocked_weight * P2_is_blocked
 
-       
-        #P1_score = distance_weight * distance_p1 + availableMovesBonus_p1 + ladder_distance_weight * ladder_distance_p1 + snake_distance_weight * snake_distance_p1 - p1_blocked_weight *  P1_possibly_blocked_count
-        #P2_score = distance_weight * distance_p2 + availableMovesBonus_p2 + ladder_distance_weight * ladder_distance_p2 + snake_distance_weight * snake_distance_p2 - p2_blocked_weight * P2_possibly_blocked_count
-        
-        
-        P1_score = distance_weight * distance_p1 #+ availableMovesBonus_p1 + ladder_distance_weight * ladder_distance_p1 + snake_distance_weight * snake_distance_p1 - p1_blocked_weight *  P1_possibly_blocked_count
-        P2_score = distance_weight * distance_p2 #+ availableMovesBonus_p2 + ladder_distance_weight * ladder_distance_p2 + snake_distance_weight * snake_distance_p2 - p2_blocked_weight * P2_possibly_blocked_count
-
-
-        if movingPlayerName == "Player":
-            if P1_all_matching:
+        #======RETURN MOVING PLAYER'S SCORE================
+        if movingPlayerName == self.P1name:
+            if P1_all_moves_blocked:
                 return float("-inf")
-            return P1_score
+            else:
+                return P1_score
         else:
-            if P2_all_matching:
+            if P2_all_moves_blocked:
                 return float("-inf")
-            return P2_score
+            else:
+                return P2_score
      
     def generateChildren(self, specialCases, level):
         """
             RULES:
-            1) each Node can have 1,2,3,4,5 or 6 children
-            2) player cannot move to occupied tile
-            3) if piece moves to beggining of specialCase path, but there's
-                a piece at the enpoint, piece will remain at startpoint
+                Each player has 6 available moves at the beggining: 1, 2, 3, 4, 5, 6.
+                When a player moves, the move used is not available anymore.
+                When player runs out of all moves, they are reset to 1, 2, 3, 4, 5, 6.
+                Two players cannot be on the same tile. If opponent in front is close enough, the move
+                that would lead to opponent's position is *removed* from moving players available moves.
+                If opponent is at the end tile of a specialCase (snakes and ladders) and moving player
+                moves to the beggining tile of the same snake or ladder, player will remain at the beggining
+                and not go up/down to satisfy the "two players cannot occupy the same tile rule".
+                After opponent moves, player still *cannot* use snake or ladder to go up/down. 
+
+                If player has only 1 available move and oponnent is blocking the new tile, player loses.
+                If player is near finish and doesn't have the necessary move to finish the game or to move to any other tile, player loses.
+
+                If player lands on tile nr. 100, player wins.
         """
 
-        if self.isTerminal:# and  (self.P1_win  or  self.P2_win):
+        if self.isTerminal:
             return
         
         
@@ -238,8 +233,6 @@ class Node:
 
                 #check if other player is at possible target
                 if boardNr + move == occupiedBoardNr:
-                    #print(f"removing {self.movingPlayer} move {move} from level {self.level}")
-                    #moves.remove(move)
                     continue
         
                 #define new boardNr if target is clear
@@ -257,8 +250,6 @@ class Node:
                 #remove move from next node's available moves after performing it
                 newMoves.remove(move)
 
-                #todo common move array?
-
                 #generate next node:
                 if self.movingPlayer == self.P1name:
                     P1newMoves = newMoves
@@ -275,7 +266,6 @@ class Node:
 
                 node = Node(P1newMoves, self.P1name, P1newBoardNr, P2newMoves,
                             self.P2name, P2newBoardNr, idlePlayerName, level, childScore)
-                #if node not in self.children:
                 self.addChild(node)            
     
     def generateTree(self, specialCases, limit):
@@ -290,7 +280,7 @@ class Node:
             #if level <= limit:
             child.generateTree(specialCases, limit)
 
-    def printTree(self, **kwargs):
+    def saveSubTree(self, **kwargs):
         indentCount = 0
         file =None
         for key, val in kwargs.items():
@@ -301,11 +291,10 @@ class Node:
 
         
         indent = "\t"*indentCount
-        #print(f'writing: {indent+self.generateNodeInfo()}')
         file.write(indent+self.generateNodeInfo()+"\n")
 
         for child in self.children:
-            child.printTree(file=file, indent=indentCount + 1)
+            child.saveSubTree(file=file, indent=indentCount + 1)
 
 class Tree:
     def __init__(self, specialCases, gameMatrix, root):
@@ -318,14 +307,13 @@ class Tree:
     
     def saveTree(self, node, fileName):
         f = open(fileName, "w", encoding="utf-8")
-        node.printTree(file=f)
+        node.saveSubTree(file=f)
         f.close()
-              
+    
+    #based on psuedocode from https://www.baeldung.com/cs/minimax-algorithm
     def minimax(self, node, level=LIMIT, maximizing_player=True):
         if level == 0 or node.isTerminal:
-            #print(f"minimax base score: {node.score}")
             node.minimaxScore = node.score
-            #print(f"returning {node.score}")
             return node.score
 
         #maximizing player's turn (CPU)
@@ -335,7 +323,6 @@ class Tree:
                 score = self.minimax(child, level - 1, False)
                 if score > max_score:
                     max_score = score
-            #print(f"setting max score {max_score}")
             node.minimaxScore = max_score
             return max_score
         #minimizing players turn (Player)
@@ -345,6 +332,5 @@ class Tree:
                 score = self.minimax(child, level - 1, True)
                 if score < min_score:
                     min_score = score
-                #print(f"setting min score {min_score}")
                 node.minimaxScore = min_score
             return min_score

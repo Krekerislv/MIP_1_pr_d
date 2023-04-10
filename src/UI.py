@@ -6,7 +6,7 @@ import sys
 os.chdir(os.path.split(__file__)[0])
 
 class Player:
-    def __init__(self, name, posDict, boardNr, radius, color, window, specialCases):
+    def __init__(self, name, posDict, boardNr, radius, color, window, specialCases, initMoves=[1,2,3,4,5,6]):
         self.name = name
         self.posDict = posDict
         self.boardNr = boardNr
@@ -14,7 +14,7 @@ class Player:
         self.radius = radius
         self.color = color
         self.window = window
-        self.moves = [1,2,3,4,5,6]
+        self.moves = initMoves#[1,2]#,3,4,5,6]
         self.selected = False
         self.allowMove = False #controls player turns
         self.specialCases = specialCases
@@ -41,15 +41,9 @@ class Player:
                 self.pos = self.posDict[newBoardNr]
                 self.boardNr = newBoardNr
                 return True
-        else:
-            if newBoardNr in list(self.specialCases.keys()):
-                if  takenSpecialCase != self.specialCases[newBoardNr]:
-                    newBoardNr = self.specialCases[newBoardNr]
-                
+        else:      
             self.pos = self.posDict[newBoardNr]
             self.boardNr = newBoardNr
-
-        #print(f"Moved {self.name}")
                 
         return False
     
@@ -61,9 +55,8 @@ class Player:
     def setDefault(self):
         self.boardNr = 1
         self.pos = self.posDict[1]
-        self.moves = [1,2,3,4,5,6]
+        self.moves = [1,2,3,4,5,6]#[1,2,3]#,4,5,6]
         self.selected = False
-        #self.allowMove = False
 
 class UI:
     def __init__(self, title):
@@ -145,29 +138,13 @@ class UI:
         self.window.blit(CPU_pos_str, (self.WIDTH //2, self.HEIGHT - self.scoreBoardHeight))
         self.window.blit(Player_moves_str, (10, self.HEIGHT - self.scoreBoardHeight//2))
         self.window.blit(CPU_moves_str, (self.WIDTH //2, self.HEIGHT - self.scoreBoardHeight//2))
-    """
-    def handlePlayerChoice(self):
-        print("handling player choice")
-        if self.mouseOn_ch1_sur:
-            self.Player.allowMove = True
-            self.CPU.allowMove = False
-            self.mouseOn_ch1_sur = False
-            
-        elif self.mouseOn_ch2_sur:
-            self.Player.allowMove = False
-            self.CPU.allowMove = True
-            self.mouseOn_ch2_sur = False
-        
-        self.GameOver = False
-    """
+
     def resetStartState(self):
         self.Player.setDefault()
         self.CPU.setDefault()
         self.mouseOn_ok_sur = False
         self.startPlayer = None
         self.cpuMoveDone = False
-        #self.GameOver = False
-        print("reseting victor")
         self.victor = None
 
     def generatePosMatrix(self):
@@ -199,9 +176,7 @@ class UI:
 
     def getSelectedPlayer(self):
         xPos, yPos = pygame.mouse.get_pos()
-        print("tryna get selected tile")
         if abs(xPos-self.Player.pos[0]) < self.Player.radius and abs(yPos-self.Player.pos[1]) < self.Player.radius:
-            print(f"Clicked on player. allowMove: {self.Player.allowMove}")
             if self.Player.allowMove:
                 self.Player.selected = True
     
@@ -243,8 +218,6 @@ class UI:
     def chooseFirstPlayer(self):
         self.startPlayer = None
         while not self.startPlayer:
-            #set both to false
-            #print("Setting to false from 245")
             self.Player.allowMove = False
             self.CPU.allowMove = False
 
@@ -297,35 +270,24 @@ class UI:
                     sys.exit()
                 elif event.type == pygame.MOUSEBUTTONDOWN:
                     if self.mouseOn_ch1_sur:
-                        #print("Setting to true from 298")
                         self.Player.allowMove = True
                         self.waitingOnPlayer = True
                         self.startPlayer = self.Player
-                        self.maximizingPlayer = False#True
-                        #print("ch1")
-                        #return self.Player
+                        self.maximizingPlayer = False
                     elif self.mouseOn_ch2_sur:
-                        #print("Setting to false from 307")
                         self.Player.allowMove = False
                         self.CPU.allowMove = True
                         self.waitingOnPlayer = False
                         self.startPlayer = self.CPU
-                        self.maximizingPlayer = True#False
-                        #print("ch2")
-                        #return self.CPU
+                        self.maximizingPlayer = True#
             pygame.display.update()
         self.GameOver = False
 
     def handleMouseClick(self):
-        #process user choice on first player
-        #if self.GameOver:
-            #self.handlePlayerChoice()
-
         #if player was selected with previous mouse click, move it to clicked tile
         if self.Player.selected:
             self.Player.drawAvailableMoves()
             if self.Player.updatePos(self.getClickedTile(), self.CPU.boardNr):
-                #print("Setting to false from 324")
                 self.Player.allowMove = False
                 self.waitingOnPlayer = False
                 self.playerMoveDone = True
@@ -367,34 +329,25 @@ class UI:
             self.CPU.pos = (x+space,y)
 
         if self.waitingOnPlayer:
-            #allow Player to move
-            #print("Setting to true from 367")
             self.Player.allowMove = True
             self.CPU.allowMove = False
 
-            #self.playerMoveDone = False
-
         self.updateDisplay()
         if self.victor:
-            #print("Showing victory popup")
             self.showVictoryPopup(self.victor[0], self.victor[1])
         pygame.display.update()
 
-    def initPlayer(self, name,  color):
+    def initPlayer(self, name,  color):#, initMoves):
         if name == "Player":
-            self.Player = Player("Player", self.posDict, 1, 15, color, self.window, self.specialCases)
+            self.Player = Player("Player", self.posDict, 1, 15, color, self.window, self.specialCases)#, initMoves)
         elif name == "CPU":
-            self.CPU = Player("CPU", self.posDict, 1, 15, color, self.window, self.specialCases)
-        else:
-            print(f"Cannot initialize player with name: '{name}'")
+            self.CPU = Player("CPU", self.posDict, 1, 15, color, self.window, self.specialCases)#, initMoves)
     
     def updatePlayerProperties(self, name, newBoardNr, moves):
         if name == "Player":
-            #self.Player.updatePos(newBoardNr)
             self.Player.moves = moves
         elif name == "CPU":
             self.CPU.boardNr = newBoardNr
             self.CPU.moves = moves
             self.CPU.updatePos(self.CPU.boardNr)
-        else:
-            print(f"Cannot update properties for player '{name}'")
+
