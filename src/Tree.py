@@ -186,8 +186,13 @@ class Node:
                 P2_all_matching = False
 
        
-        P1_score = distance_weight * distance_p1 + availableMovesBonus_p1 + ladder_distance_weight * ladder_distance_p1 + snake_distance_weight * snake_distance_p1 - p1_blocked_weight *  P1_possibly_blocked_count
-        P2_score = distance_weight * distance_p2 + availableMovesBonus_p2 + ladder_distance_weight * ladder_distance_p2 + snake_distance_weight * snake_distance_p2 - p2_blocked_weight * P2_possibly_blocked_count
+        #P1_score = distance_weight * distance_p1 + availableMovesBonus_p1 + ladder_distance_weight * ladder_distance_p1 + snake_distance_weight * snake_distance_p1 - p1_blocked_weight *  P1_possibly_blocked_count
+        #P2_score = distance_weight * distance_p2 + availableMovesBonus_p2 + ladder_distance_weight * ladder_distance_p2 + snake_distance_weight * snake_distance_p2 - p2_blocked_weight * P2_possibly_blocked_count
+        
+        
+        P1_score = distance_weight * distance_p1 #+ availableMovesBonus_p1 + ladder_distance_weight * ladder_distance_p1 + snake_distance_weight * snake_distance_p1 - p1_blocked_weight *  P1_possibly_blocked_count
+        P2_score = distance_weight * distance_p2 #+ availableMovesBonus_p2 + ladder_distance_weight * ladder_distance_p2 + snake_distance_weight * snake_distance_p2 - p2_blocked_weight * P2_possibly_blocked_count
+
 
         if movingPlayerName == "Player":
             if P1_all_matching:
