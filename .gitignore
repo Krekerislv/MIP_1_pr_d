@@ -1,3 +1,5 @@
 src/__pycache__
-src/tree.txt
+src/tree*.txt
 src/test.py
+src/img/test.py
+__pycache__
