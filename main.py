@@ -1,38 +1,41 @@
 import src.UI
 import src.Tree as TreeProcessor
+from PARAMS import SAVE_TREE, RANDOM_MOVES, CPU_IS_MAXIMIZER
 
 if __name__ == "__main__":
     # Create a new UI object
     ui = src.UI.UI("Snakes and Ladders")
 
-    ui.initPlayer("Player", (0,120,0))#, [1,2,3])
-    ui.initPlayer("CPU", (0,0,120))#, [1,2,3])
+    ui.initPlayer("Player", (0,120,0), rdmMoves=RANDOM_MOVES)
+    ui.initPlayer("CPU", (0,0,120), rdmMoves=RANDOM_MOVES)
     ui.updateScoreboard()
 
     
     #CPU = maximizer
     #Player = minimizer
     ui.chooseFirstPlayer()
+    
 
     #create start state
     startState = TreeProcessor.Node(ui.Player.moves, ui.Player.name, ui.Player.boardNr,
                                     ui.CPU.moves, ui.CPU.name, ui.CPU.boardNr,
-                                    ui.startPlayer.name)
+                                    ui.startPlayer.name, isMax=ui.maximizingPlayerStarts)
 
     #create a tree object
     tree = TreeProcessor.Tree(ui.specialCases, ui.posDict, startState)
 
-    #generate tree starting from startState (default depth = 5 (edit at Tree.py line 3))
+    #generate tree starting from startState
     tree.generateTree(startState)
 
     #apply minimax for generated tree (set "minimaxScore" for all nodes)
-    tree.minimax(startState, maximizing_player=ui.maximizingPlayer)
-    tree.saveTree(startState, "tree.txt")
+    tree.minimax(startState, ui.maximizingPlayerStarts)
+    if SAVE_TREE:
+        tree.saveTree(startState, "tree.txt")
     # MAIN game loop
     currentNode = startState
     #a variable that ensures that cpu moves only in next loop iteration
     loopHelper = False
-
+    #======================MAIN LOOP=====================================
     while True:
         #check if start state is terminal
         if currentNode.isTerminal:
@@ -62,20 +65,22 @@ if __name__ == "__main__":
             #create a new start state
             startState = TreeProcessor.Node(ui.Player.moves, ui.Player.name, ui.Player.boardNr,
                                             ui.CPU.moves, ui.CPU.name, ui.CPU.boardNr,
-                                            ui.startPlayer.name)
+                                            ui.startPlayer.name, isMax=ui.maximizingPlayerStarts)
             tree = TreeProcessor.Tree(ui.specialCases, ui.posDict, startState)
 
             #generate new tree and apply minimax
             tree.generateTree(startState)
-            tree.minimax(startState,  maximizing_player=ui.maximizingPlayer)
+            tree.minimax(startState, ui.maximizingPlayerStarts)
+            if SAVE_TREE:
+                tree.saveTree(startState, "tree.txt")
             currentNode = startState
-
      
         #if maximum depth is reached, need to generate more levels
         if not currentNode.children:
             tree.generateTree(currentNode,  limit=currentNode.level + TreeProcessor.LIMIT)
-            tree.minimax(currentNode, maximizing_player=ui.maximizingPlayer)
-            tree.saveTree(currentNode, f"tree{currentNode.level}.txt")
+            tree.minimax(currentNode, ui.maximizingPlayerStarts)
+            if SAVE_TREE:
+                tree.saveTree(currentNode, f"tree{currentNode.level}.txt")
 
         #this executes once after player has moved
         if ui.playerMoveDone:
@@ -90,12 +95,14 @@ if __name__ == "__main__":
             ui.updatePlayerProperties("CPU", currentNode.P2boardNr, currentNode.P2moves)
             ui.playerMoveDone = False
 
-
-
+        #Move CPU:
         if not ui.waitingOnPlayer and loopHelper:
             tmp = currentNode.P2boardNr
             #choose child with highest minimax score. If equal, choose the one with highest CPU's board nr
-            currentNode = max(currentNode.children, key= lambda x : [x.minimaxScore, x.P2boardNr ] )
+            if CPU_IS_MAXIMIZER:
+                currentNode = max(currentNode.children, key= lambda x : [x.minimaxScore, x.P2boardNr ] )
+            else:
+                currentNode = min(currentNode.children, key= lambda x : [x.minimaxScore, -x.P2boardNr ] )
             
             ui.updatePlayerProperties("CPU", currentNode.P2boardNr, currentNode.P2moves)
             ui.updatePlayerProperties("Player", currentNode.P1boardNr, currentNode.P1moves)

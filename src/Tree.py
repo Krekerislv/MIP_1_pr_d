@@ -1,9 +1,9 @@
 from copy import deepcopy
+from PARAMS import MOVE_COUNT, LIMIT, WEIGHTS
 
-LIMIT = 5 #depth limit
 
 class Node:
-    def __init__(self, P1moves, P1name, P1boardNr, P2moves, P2name, P2boardNr, movingPlayer, level=0, score=0, minimaxScore=None):
+    def __init__(self, P1moves, P1name, P1boardNr, P2moves, P2name, P2boardNr, movingPlayer, level=0, score=0, minimaxScore=None, isMax=None):
         self.P1moves = P1moves #player
         self.P1name = P1name
         self.P1boardNr = P1boardNr
@@ -14,23 +14,21 @@ class Node:
         self.score = score
         self.minimaxScore = minimaxScore
         self.reason = None #a string that states the reason of win/loss
+        self.isMax = isMax #maximizing level or minimizing level
 
         self.movingPlayer = movingPlayer #name of starting player
         self.isTerminal = False
         self.P1_win = False
         self.P2_win = False
-        
 
         self.children = []
         self.checkNode()
 
     def checkNode(self):
         if len(self.P1moves) == 0:
-            #print(f"setting default moves for P1 at level {self.level}")
-            self.P1moves = [1,2,3,4,5,6]
+            self.P1moves = [i for i in range(1, MOVE_COUNT+1)]
         if len(self.P2moves) == 0:
-            #print(f"setting default moves for P1 at level {self.level}")
-            self.P2moves = [1,2,3,4,5,6]
+            self.P2moves = [i for i in range(1, MOVE_COUNT+1)]
 
 
         self.P1_win = True
@@ -75,15 +73,15 @@ class Node:
         self.children.append(node)
 
     def generateNodeInfo(self):
-        string = f"Level:{self.level}:Move:{self.movingPlayer}:"
+        string = f"Level:{self.level}:Move:{self.movingPlayer}|"
         string += f"{self.P1name}:{self.P1boardNr}:{self.P1moves}|"
         string += f"{self.P2name}:{self.P2boardNr}:{self.P2moves}|"
         string += f"MiniMax:{self.minimaxScore}|Score:{self.score}|"
 
-        if self.movingPlayer == "Player":
-            string += "MIN|"
-        else:
+        if self.isMax:
             string += "MAX|"
+        else:
+            string += "MIN|"
 
         if self.isTerminal:
             string += "■"
@@ -111,7 +109,7 @@ class Node:
         """
         #============WEIGHTS==============
         distance_weight = 1
-        available_moves_weight = 1#1
+        available_moves_weight = 0.1#1
         ladder_distance_weight = 1#5
         snake_distance_weight = -1#-5
         blocked_weight = -0.1#1
@@ -173,8 +171,8 @@ class Node:
                 P1_is_blocked = 1
 
         #======CALCULATE SCORE FOR EACH PLAYER=============
-        P1_score = distance_weight * distance_p1 + available_moves_weight * available_moves_p1 + ladder_distance_weight * ladder_distance_p1 + snake_distance_weight * snake_distance_p1 + blocked_weight * P1_is_blocked
-        P2_score = distance_weight * distance_p2 + available_moves_weight * available_moves_p2 + ladder_distance_weight * ladder_distance_p2 + snake_distance_weight * snake_distance_p2 + blocked_weight * P2_is_blocked
+        P1_score = WEIGHTS["distance"] * distance_p1 + WEIGHTS["available_moves"] * available_moves_p1 + WEIGHTS["ladder_distance"] * ladder_distance_p1 + WEIGHTS["snake_distance"] * snake_distance_p1 + WEIGHTS["blocked"] * P1_is_blocked
+        P2_score = WEIGHTS["distance"] * distance_p2 + WEIGHTS["available_moves"] * available_moves_p2 + WEIGHTS["ladder_distance"] * ladder_distance_p2 + WEIGHTS["snake_distance"] * snake_distance_p2 + WEIGHTS["blocked"] * P2_is_blocked
 
         #======RETURN MOVING PLAYER'S SCORE================
         if movingPlayerName == self.P1name:
@@ -216,11 +214,13 @@ class Node:
             moves = self.P1moves
             boardNr = self.P1boardNr
             occupiedBoardNr = self.P2boardNr
+            otherPlayerMoves = self.P2moves
         else:
             idlePlayerName = self.P1name                
             moves = self.P2moves
             boardNr = self.P2boardNr
             occupiedBoardNr = self.P1boardNr
+            otherPlayerMoves = self.P1moves
 
         #check if opponent is on specialCase tile
         takenSpecialCase = None
@@ -229,15 +229,16 @@ class Node:
         
         for move in moves:
             newMoves = deepcopy(moves)
-            if boardNr + move <= 100:
+            newOtherPlayerMoves = deepcopy(otherPlayerMoves)
+            #define new boardNr if target is clear
+            newBoardNr = boardNr + move
+             
+            if newBoardNr <= 100:
 
                 #check if other player is at possible target
-                if boardNr + move == occupiedBoardNr:
+                if newBoardNr == occupiedBoardNr:
                     continue
         
-                #define new boardNr if target is clear
-                newBoardNr = boardNr + move
-                
                 #if opponent is on specialCase endpoint
                 #check if it's disturbing player's move
                 if takenSpecialCase:
@@ -250,14 +251,19 @@ class Node:
                 #remove move from next node's available moves after performing it
                 newMoves.remove(move)
 
+                #remove opponent's move, if moving player blocks a tile
+                for otherPlayerMove in otherPlayerMoves:
+                    if occupiedBoardNr + otherPlayerMove == newBoardNr:
+                        newOtherPlayerMoves.remove(otherPlayerMove)
+
                 #generate next node:
                 if self.movingPlayer == self.P1name:
                     P1newMoves = newMoves
-                    P2newMoves = deepcopy(self.P2moves)
+                    P2newMoves = newOtherPlayerMoves
                     P1newBoardNr = newBoardNr
                     P2newBoardNr = self.P2boardNr
                 else:
-                    P1newMoves = deepcopy(self.P1moves)
+                    P1newMoves = newOtherPlayerMoves
                     P2newMoves = newMoves
                     P1newBoardNr = self.P1boardNr
                     P2newBoardNr = newBoardNr
@@ -265,7 +271,7 @@ class Node:
                 childScore = self.heuristic(P1newMoves, P2newMoves, P1newBoardNr, P2newBoardNr, self.movingPlayer, specialCases)
 
                 node = Node(P1newMoves, self.P1name, P1newBoardNr, P2newMoves,
-                            self.P2name, P2newBoardNr, idlePlayerName, level, childScore)
+                            self.P2name, P2newBoardNr, idlePlayerName, level, childScore, isMax=not self.isMax)
                 self.addChild(node)            
     
     def generateTree(self, specialCases, limit):
@@ -311,7 +317,7 @@ class Tree:
         f.close()
     
     #based on psuedocode from https://www.baeldung.com/cs/minimax-algorithm
-    def minimax(self, node, level=LIMIT, maximizing_player=True):
+    def minimax(self, node, maximizing_player, level=LIMIT):
         if level == 0 or node.isTerminal:
             node.minimaxScore = node.score
             return node.score
@@ -320,7 +326,7 @@ class Tree:
         if maximizing_player:
             max_score = -float('inf')
             for child in node.children:
-                score = self.minimax(child, level - 1, False)
+                score = self.minimax(child, False, level - 1)
                 if score > max_score:
                     max_score = score
             node.minimaxScore = max_score
@@ -329,7 +335,7 @@ class Tree:
         else:
             min_score = float('inf')
             for child in node.children:
-                score = self.minimax(child, level - 1, True)
+                score = self.minimax(child, True, level - 1)
                 if score < min_score:
                     min_score = score
                 node.minimaxScore = min_score

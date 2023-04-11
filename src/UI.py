@@ -1,12 +1,17 @@
 import os
 import pygame
 import sys
+import random
+from PARAMS import INITIAL_MOVE_COUNT, CPU_IS_MAXIMIZER
+
 #set working directory to script dir
 #this allows to use relateive directories without going insane
 os.chdir(os.path.split(__file__)[0])
 
 class Player:
-    def __init__(self, name, posDict, boardNr, radius, color, window, specialCases, initMoves=[1,2,3,4,5,6]):
+    def __init__(self, name, posDict, boardNr,
+                radius, color, window, specialCases,
+                rdmMoves = False):
         self.name = name
         self.posDict = posDict
         self.boardNr = boardNr
@@ -14,7 +19,14 @@ class Player:
         self.radius = radius
         self.color = color
         self.window = window
-        self.moves = initMoves#[1,2]#,3,4,5,6]
+        self.rdmMoves = rdmMoves
+        self.moves = []
+        if self.rdmMoves:
+            #generate RANDOM_MOVE_LENGTH moves (only first set of moves)
+            #after player runs out of these moves, they will be set to 1,2,3,4
+            while len(self.moves) != INITIAL_MOVE_COUNT : self.moves.append(random.randint(1,6))
+        else:
+            self.moves = [i for i in range(1, INITIAL_MOVE_COUNT+1)]
         self.selected = False
         self.allowMove = False #controls player turns
         self.specialCases = specialCases
@@ -55,7 +67,13 @@ class Player:
     def setDefault(self):
         self.boardNr = 1
         self.pos = self.posDict[1]
-        self.moves = [1,2,3,4,5,6]#[1,2,3]#,4,5,6]
+        self.moves = []
+        if self.rdmMoves:
+            #generate RANDOM_MOVE_LENGTH moves (only first set of moves)
+            #after player runs out of these moves, they will be set to 1,2,3,4
+            while len(self.moves) != INITIAL_MOVE_COUNT : self.moves.append(random.randint(1,6))
+        else:
+            self.moves = [i for i in range(1, INITIAL_MOVE_COUNT+1)]
         self.selected = False
 
 class UI:
@@ -115,7 +133,9 @@ class UI:
         #a flag that indicates when player has made a move
         self.cpuMoveDone = False 
         self.playerMoveDone = False
-        self.maximizingPlayer = None # true - maximizing player starts, false - minimizing player starts
+        
+        #flag that can be set from main that let's code know, which is the maximizing player
+        self.maximizingPlayerStarts = None # true - maximizing player starts, false - minimizing player starts
 
         # Set up the background for the text at the bottom
         self.text_bg = pygame.Surface((self.WIDTH, self.scoreBoardHeight))
@@ -130,8 +150,8 @@ class UI:
         # Draw the player position and avalable moves at the bottom
         Player_pos_str = self.font.render(f"{self.Player.name} Position: {self.Player.boardNr}", True, (255, 255, 255))
         CPU_pos_str = self.font.render(f"{self.CPU.name} Position: {self.CPU.boardNr}", True, (255, 255, 255))
-        Player_moves_str = self.font.render(f"{self.Player.name} Moves: {', '.join(map(str, self.Player.moves))}", True, (255, 255, 255))
-        CPU_moves_str = self.font.render(f"{self.CPU.name} Moves: {', '.join(map(str, self.CPU.moves))}", True, (255, 255, 255))
+        Player_moves_str = self.font.render(f"{self.Player.name} Moves: {', '.join(map(str, sorted(self.Player.moves)))}", True, (255, 255, 255))
+        CPU_moves_str = self.font.render(f"{self.CPU.name} Moves: {', '.join(map(str, sorted(self.CPU.moves)))}", True, (255, 255, 255))
         self.text_bg.fill((0,0,0))
         self.window.blit(self.text_bg, (0, self.HEIGHT - self.scoreBoardHeight))
         self.window.blit(Player_pos_str, (10, self.HEIGHT - self.scoreBoardHeight))
@@ -191,6 +211,7 @@ class UI:
         victory_sur = self.font.render(msg1, True, (255, 255, 255))
 
         #create trophy object and add it to container
+        #trophy image from: https://www.flaticon.com/free-icon/trophy_548484
         trophy_img = pygame.image.load("img/trophy.png")
         trophy_img = pygame.transform.scale(trophy_img, (80, 80))
         popUp.blit(trophy_img, (int(0.7*self.width_popup), self.height_popup//2 - 50))
@@ -273,13 +294,21 @@ class UI:
                         self.Player.allowMove = True
                         self.waitingOnPlayer = True
                         self.startPlayer = self.Player
-                        self.maximizingPlayer = False
+                        if CPU_IS_MAXIMIZER:
+                            self.maximizingPlayerStarts = False
+                        else:
+                            self.maximizingPlayerStarts = True  
+                        #self.maximizingPlayerStarts = False
                     elif self.mouseOn_ch2_sur:
                         self.Player.allowMove = False
                         self.CPU.allowMove = True
                         self.waitingOnPlayer = False
                         self.startPlayer = self.CPU
-                        self.maximizingPlayer = True#
+                        if CPU_IS_MAXIMIZER:
+                            self.maximizingPlayerStarts = True
+                        else:
+                            self.maximizingPlayerStarts = False
+                        #self.maximizingPlayerStarts = True#
             pygame.display.update()
         self.GameOver = False
 
@@ -337,11 +366,11 @@ class UI:
             self.showVictoryPopup(self.victor[0], self.victor[1])
         pygame.display.update()
 
-    def initPlayer(self, name,  color):#, initMoves):
+    def initPlayer(self, name,  color, rdmMoves = False):
         if name == "Player":
-            self.Player = Player("Player", self.posDict, 1, 15, color, self.window, self.specialCases)#, initMoves)
+            self.Player = Player("Player", self.posDict, 1, 15, color, self.window, self.specialCases, rdmMoves)
         elif name == "CPU":
-            self.CPU = Player("CPU", self.posDict, 1, 15, color, self.window, self.specialCases)#, initMoves)
+            self.CPU = Player("CPU", self.posDict, 1, 15, color, self.window, self.specialCases, rdmMoves)
     
     def updatePlayerProperties(self, name, newBoardNr, moves):
         if name == "Player":
