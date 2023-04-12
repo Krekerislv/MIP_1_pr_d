@@ -82,7 +82,7 @@ class Node:
             self.P2_win = True #has won
             self.reason = f"{self.P2name} reached|finish!"
 
-        #if node is terminal, no further checking is necessary
+        #check if node is terminal
         self.isTerminal = self.P1_win or self.P2_win
 
     def addChild(self, node):
@@ -100,12 +100,12 @@ class Node:
             string += "MIN|"
 
         if self.isTerminal:
-            string += "■"
+            string += "GAME_END|"
         
         if self.P1_win:
-            string += f"✔{self.P1name}"
+            string += f"{self.P1name}"
         if self.P2_win:
-            string += f"✔{self.P2name}"
+            string += f"{self.P2name}"
         
         return string
     
@@ -141,9 +141,9 @@ class Node:
     def generateChildren(self, specialCases, level):
         """
             RULES:
-                Each player has 6 available moves at the beggining: 1, 2, 3, 4, 5, 6.
+                Each player has X available moves at the beggining. (X is set in PARAMS.py)
                 When a player moves, the move used is not available anymore.
-                When player runs out of all moves, they are reset to 1, 2, 3, 4, 5, 6.
+                When player runs out of all moves, they are reset to 1, 2, 3..X.
                 Two players cannot be on the same tile. If opponent in front is close enough, the move
                 that would lead to opponent's position is *removed* from moving players available moves.
                 If opponent is at the end tile of a specialCase (snakes and ladders) and moving player
@@ -189,7 +189,6 @@ class Node:
 
                 #check if other player is at possible target
                 if newBoardNr == occupiedBoardNr:
-                    #newMoves.remove(move)
                     continue
         
                 #if opponent is on specialCase endpoint
@@ -220,15 +219,12 @@ class Node:
                     P2newMoves = newMoves
                     P1newBoardNr = self.P1boardNr
                     P2newBoardNr = newBoardNr
-                #caculate heuristic value for children node
-                #childScore = self.heuristic(P1newMoves, P2newMoves, P1newBoardNr, P2newBoardNr, self.movingPlayer, specialCases)
 
                 node = Node(P1newMoves, self.P1name, P1newBoardNr, P2newMoves,
                             self.P2name, P2newBoardNr, idlePlayerName, level, isMax=not self.isMax)
                 self.addChild(node)            
     
-    def generateTree(self, specialCases, limit):
-        
+    def generateTree(self, specialCases, limit): 
         if self.level >= limit:
             self.heuristic()
             return

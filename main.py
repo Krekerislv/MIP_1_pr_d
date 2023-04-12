@@ -32,6 +32,8 @@ if __name__ == "__main__":
     tree.minimax(startState, ui.maximizingPlayerStarts)
     if SAVE_TREE:
         tree.saveTree(startState, "tree.txt")
+
+
     # MAIN game loop
     currentNode = startState
     #a variable that ensures that cpu moves only in next loop iteration
@@ -100,7 +102,6 @@ if __name__ == "__main__":
         if not ui.waitingOnPlayer and loopHelper:
             tmp = currentNode.P2boardNr
             #choose child with highest minimax score. If equal, choose the one with highest CPU's board nr
-            
             currentNode = max(currentNode.children, key= lambda x : [x.minimaxScore, x.P2boardNr ] )
             
             ui.updatePlayerProperties("CPU", currentNode.P2boardNr, currentNode.P2moves)

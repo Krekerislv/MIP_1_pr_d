@@ -43,7 +43,6 @@ class Player:
         if self.name == "Player": #if player moved, do additional check
             if newBoardNr == self.boardNr:
                 return False
-        
             move = newBoardNr - self.boardNr
             if move in self.moves:
                 if newBoardNr in list(self.specialCases.keys()):
@@ -55,8 +54,7 @@ class Player:
                 return True
         else:      
             self.pos = self.posDict[newBoardNr]
-            self.boardNr = newBoardNr
-                
+            self.boardNr = newBoardNr  
         return False
     
     def drawAvailableMoves(self):
@@ -348,7 +346,7 @@ class UI:
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 self.handleMouseClick()
 
-        #if 2 players are at the same tile, move them apart to avoid overlapping (only possible for first tile)
+        #if 2 players are at the same tile, move them apart to avoid overlapping (should only be possible for first tile)
         if self.Player.pos == self.CPU.pos:
             x, y = self.Player.pos
             space = 20
