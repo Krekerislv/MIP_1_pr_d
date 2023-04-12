@@ -23,7 +23,7 @@ class Player:
         self.moves = []
         if self.rdmMoves:
             #generate RANDOM_MOVE_LENGTH moves (only first set of moves)
-            #after player runs out of these moves, they will be set to 1,2,3,4
+            #after player runs out of these moves, they will be set to 1,2,3...
             while len(self.moves) != INITIAL_MOVE_COUNT : self.moves.append(random.randint(1,6))
         else:
             self.moves = [i for i in range(1, INITIAL_MOVE_COUNT+1)]
@@ -70,7 +70,7 @@ class Player:
         self.moves = []
         if self.rdmMoves:
             #generate RANDOM_MOVE_LENGTH moves (only first set of moves)
-            #after player runs out of these moves, they will be set to 1,2,3,4
+            #after player runs out of these moves, they will be set to 1,2,3...
             while len(self.moves) != INITIAL_MOVE_COUNT : self.moves.append(random.randint(1,6))
         else:
             self.moves = [i for i in range(1, INITIAL_MOVE_COUNT+1)]

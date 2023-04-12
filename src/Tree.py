@@ -107,13 +107,6 @@ class Node:
                 6) all moves blocked: if player has all moves blocked by opponent, it is guaranteed to lose. In this case score = -inf.
                 ...
         """
-        #============WEIGHTS==============
-        distance_weight = 1
-        available_moves_weight = 0.1#1
-        ladder_distance_weight = 1#5
-        snake_distance_weight = -1#-5
-        blocked_weight = -0.1#1
-    
         #=======DISTANCE TO FINISH========
         distance_p1 = P1newBoardNr / 100
         distance_p2 = P2newBoardNr / 100
