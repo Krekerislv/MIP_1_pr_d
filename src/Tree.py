@@ -113,8 +113,8 @@ class Node:
 
 
         #=======AVAILABLE MOVE COUNT======
-        available_moves_p1 = len(P1newMoves) / 6
-        available_moves_p2 = len(P2newMoves) / 6
+        available_moves_p1 = len(P1newMoves) / MOVE_COUNT
+        available_moves_p2 = len(P2newMoves) / MOVE_COUNT
 
         #========LADDER AND SNAKE DISTANCE==========
             #specialCases contain all start and end points of snakes and ladders
