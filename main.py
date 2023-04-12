@@ -10,12 +10,12 @@ if __name__ == "__main__":
     ui.initPlayer("CPU", (0,0,120), rdmMoves=RANDOM_MOVES)
     ui.updateScoreboard()
 
-    
-    #CPU = maximizer
-    #Player = minimizer
+    #show info window
+    ui.showInfo()
+
+    #get player choice
     ui.chooseFirstPlayer()
     
-
     #create start state
     startState = TreeProcessor.Node(ui.Player.moves, ui.Player.name, ui.Player.boardNr,
                                     ui.CPU.moves, ui.CPU.name, ui.CPU.boardNr,
@@ -40,9 +40,9 @@ if __name__ == "__main__":
         #check if start state is terminal
         if currentNode.isTerminal:
             if currentNode.P1_win:
-                ui.victor = [currentNode.P1name + " wins!", "Huraay!"]             
+                ui.victor = [currentNode.P1name + " wins!", "Huraay!", currentNode.reason]             
             elif currentNode.P2_win:
-                ui.victor = [currentNode.P2name +" wins!", "Ok ):"]
+                ui.victor = [currentNode.P2name +" wins!", "Ok ):", currentNode.reason]
             
             currentNode.P1_win = False
             currentNode.P2_win = False

@@ -3,7 +3,7 @@
 #================================
 
 # Tree generation depth limit
-LIMIT = 10
+LIMIT = 11
 
 # Save tree in files as it generates
 # 1 file for every LIMIT levels
@@ -16,7 +16,7 @@ INITIAL_MOVE_COUNT = 4
 MOVE_COUNT = 4
 
 # Generate random moves for FIRST (and only first) set
-RANDOM_MOVES = False
+RANDOM_MOVES = True
 
 #If set to True, CPU will be maximizer, otherwise CPU will be minimizer
 CPU_IS_MAXIMIZER = True

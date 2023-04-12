@@ -2,7 +2,7 @@ import os
 import pygame
 import sys
 import random
-from PARAMS import INITIAL_MOVE_COUNT, CPU_IS_MAXIMIZER
+from PARAMS import INITIAL_MOVE_COUNT, CPU_IS_MAXIMIZER, MOVE_COUNT
 
 #set working directory to script dir
 #this allows to use relateive directories without going insane
@@ -200,7 +200,7 @@ class UI:
             if self.Player.allowMove:
                 self.Player.selected = True
     
-    def showVictoryPopup(self, msg1, msg2):
+    def showVictoryPopup(self, msg1, msg2, reason):
         self.waitingOnPlayer = True
         #create a popup container
         popUp = pygame.Surface((self.width_popup, self.height_popup))
@@ -231,7 +231,12 @@ class UI:
             ok_sur = self.font.render(msg2, True, (255,255,255))
         
         #add thing to popup container
-        popUp.blit(victory_sur, ((int(0.1*self.width_popup), self.height_popup//2 - 50)))
+        popUp.blit(victory_sur, ((int(0.1*self.width_popup), self.height_popup//2 - 70)))
+        reason = reason.split("|")
+        for i, r in enumerate(reason, start=1):
+            reason_sur = self.font.render(r, True, (200,200,0))
+            popUp.blit(reason_sur, ((int(0.1*self.width_popup), self.height_popup//2 - 70 + i*victory_sur.get_height())))
+
         popUp.blit(ok_sur, ok_pos)
         #add popup to main window
         self.window.blit(popUp, popUp_pos)
@@ -363,7 +368,7 @@ class UI:
 
         self.updateDisplay()
         if self.victor:
-            self.showVictoryPopup(self.victor[0], self.victor[1])
+            self.showVictoryPopup(self.victor[0], self.victor[1], self.victor[2])
         pygame.display.update()
 
     def initPlayer(self, name,  color, rdmMoves = False):
@@ -380,3 +385,73 @@ class UI:
             self.CPU.moves = moves
             self.CPU.updatePos(self.CPU.boardNr)
 
+    def showInfo(self):
+        pressed_X = False
+        while not pressed_X:
+            #create a new popup container
+            infoPopup = pygame.Surface((800, 620))
+            infoPopup.fill((0,0,0))
+
+            #define popUp position
+            popUp_pos = (self.WIDTH //2 - infoPopup.get_width()//2, self.HEIGHT //2 - infoPopup.get_height()//2)
+
+            #create surfaces from text
+            ComicSans36 = pygame.font.SysFont('Comic Sans MS', 36)
+            header_surface = ComicSans36.render("Rules!", True, (200,0,0))
+            close_surface = ComicSans36.render("X", True, (255,255,255))
+
+            #message text
+            message = 'Welcome to the board game "Snakes and Ladders"!|Ladders go up, snakes go down.|'
+            message += f'Each player begins the game with {INITIAL_MOVE_COUNT} available moves and after|'
+            message += 'every turn, used move is removed. When player|'
+            message += f'runs out of all moves, they are reset to {MOVE_COUNT} available moves.|'
+            message += '2 players cannot occupy the same tile simultaneously meaning|'
+            message += 'it is possible to not be able to go up a ladder / slide down a snake.|'
+            message += 'It is possible to run out of moves (be blocked by opponent|'
+            message += 'or not have the right move to land at 100) and lose.|'
+            message += 'First player to get to the tile "100" wins!| |'
+            message += 'To change game settings, edit PARAMS.py and restart game.| |'
+
+            message += 'Game made by Krišs Aleksandrs Vasermans 201RDB301|'
+            message += 'RDBR0 / Intelektuālas robotizētas sistēmas'
+
+
+            #init header and close btn pos
+            Header_pos = (infoPopup.get_width()//2 - header_surface.get_width() //2, int(0.02*infoPopup.get_height()))
+            X_pos = (int(0.95*infoPopup.get_width()), int(0.02*infoPopup.get_height()))
+
+           
+            X_abs_pos = (popUp_pos[0] + X_pos[0], popUp_pos[1] + X_pos[1])
+            mX, mY = pygame.mouse.get_pos()
+
+            #check if mouse is hovering over buttons
+            mouseOnX = (mX > X_abs_pos[0]) and (mX < X_abs_pos[0] + close_surface.get_width()) and (mY > X_abs_pos[1]) and (mY < X_abs_pos[1] + self.font.get_height())
+    
+            #if mouse is hovering over button, change color
+            if mouseOnX:
+                close_surface = ComicSans36.render("X", True, (255,0,0))
+            
+            
+            #add elements to popup container
+            infoPopup.blit(close_surface, X_pos)
+            infoPopup.blit(header_surface, Header_pos)
+            
+            messages = message.split("|")
+            for i, msg in enumerate(messages, start=1):
+                msg_sur = self.font.render(msg, True, (200,200,0))
+                infoPopup.blit(msg_sur, ((int(0.05*infoPopup.get_width()), 2*Header_pos[1] + i*msg_sur.get_height())))
+
+            #add popup to main window
+            self.window.blit(infoPopup, popUp_pos)
+
+            #handle events
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    sys.exit()
+                elif event.type == pygame.MOUSEBUTTONDOWN:
+                    if mouseOnX:
+                       pressed_X = True
+                    
+            pygame.display.update()
+        self.updateDisplay()

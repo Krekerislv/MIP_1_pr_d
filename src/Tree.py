@@ -32,14 +32,14 @@ class Node:
 
 
         self.P1_win = True
-        self.reason = f"{self.P2name} has no possible moves left"
+        self.reason = f"{self.P2name} has no|possible|moves left"
         for move in self.P2moves:
             if move + self.P2boardNr != self.P1boardNr:
                 self.P1_win = False
                 self.reason = None
         
         self.P2_win = True
-        self.reason = f"{self.P1name} has no possible moves left"
+        self.reason = f"{self.P1name} has no|possible|moves left"
         for move in self.P1moves:
             if move + self.P1boardNr != self.P2boardNr:
                 self.P2_win = False
@@ -50,21 +50,21 @@ class Node:
             if self.P1boardNr + move <= 100 or self.P1boardNr == 100:
                 break
             self.P2_win = True
-            self.reason = f"{self.P1name} has no possible moves left"
+            self.reason = f"{self.P1name} has no|possible move|left"
 
         for move in self.P2moves:
             if self.P2boardNr + move <= 100 or self.P2boardNr == 100:
                 break
             self.P1_win = True
-            self.reason = f"{self.P2name} has no possible moves left"
+            self.reason = f"{self.P2name} has no|possible moves|left"
                 
 
         if self.P1boardNr == 100:
             self.P1_win = True #has won
-            self.reason = f"{self.P1name} reached finish!"
+            self.reason = f"{self.P1name} reached|finish!"
         elif self.P2boardNr == 100:
             self.P2_win = True #has won
-            self.reason = f"{self.P2name} reached finish!"
+            self.reason = f"{self.P2name} reached|finish!"
 
         #if node is terminal, no further checking is necessary
         self.isTerminal = self.P1_win or self.P2_win
