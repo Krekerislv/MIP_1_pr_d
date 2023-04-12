@@ -3,7 +3,7 @@ from PARAMS import MOVE_COUNT, LIMIT, WEIGHTS
 
 
 class Node:
-    def __init__(self, P1moves, P1name, P1boardNr, P2moves, P2name, P2boardNr, movingPlayer, level=0, score=0, minimaxScore=None, isMax=None):
+    def __init__(self, P1moves, P1name, P1boardNr, P2moves, P2name, P2boardNr, movingPlayerName, level=0, minimaxScore=None, isMax=None):
         self.P1moves = P1moves #player
         self.P1name = P1name
         self.P1boardNr = P1boardNr
@@ -11,29 +11,41 @@ class Node:
         self.P2moves = P2moves #cpu
         self.P2name = P2name
         self.P2boardNr = P2boardNr
-        self.score = score
+        self.score = None
         self.minimaxScore = minimaxScore
         self.reason = None #a string that states the reason of win/loss
         self.isMax = isMax #maximizing level or minimizing level
 
-        self.movingPlayer = movingPlayer #name of starting player
+        self.movingPlayerName = movingPlayerName #name of the player whose turn it is
         self.isTerminal = False
         self.P1_win = False
         self.P2_win = False
 
         self.children = []
         self.checkNode()
+        if self.isTerminal:
+            self.heuristic()
 
     def checkNode(self):
         if len(self.P1moves) == 0:
             self.P1moves = [i for i in range(1, MOVE_COUNT+1)]
+            for move in self.P1moves:
+                if self.P1boardNr + move == self.P2boardNr and self.movingPlayerName == self.P1name:
+                    self.P1moves.remove(move)
         if len(self.P2moves) == 0:
             self.P2moves = [i for i in range(1, MOVE_COUNT+1)]
+            for move in self.P2moves:
+                if self.P2boardNr + move == self.P1boardNr and self.movingPlayerName == self.P2name:
+                    self.P2moves.remove(move)
 
 
         self.P1_win = True
         self.reason = f"{self.P2name} has no|possible|moves left"
         for move in self.P2moves:
+            #if cpu has no possible moves, but it's player's turn then cpu will have more moves
+            if self.movingPlayerName == self.P1name:
+                self.P1_win = False
+                break
             if move + self.P2boardNr != self.P1boardNr:
                 self.P1_win = False
                 self.reason = None
@@ -41,6 +53,10 @@ class Node:
         self.P2_win = True
         self.reason = f"{self.P1name} has no|possible|moves left"
         for move in self.P1moves:
+            #if player has no possible moves, but it's cpu's turn then player will have more moves
+            if self.movingPlayerName == self.P2name:
+                self.P2_win = False
+                break
             if move + self.P1boardNr != self.P2boardNr:
                 self.P2_win = False
                 self.reason = None
@@ -73,7 +89,7 @@ class Node:
         self.children.append(node)
 
     def generateNodeInfo(self):
-        string = f"Level:{self.level}:Move:{self.movingPlayer}|"
+        string = f"Level:{self.level}:Move:{self.movingPlayerName}|"
         string += f"{self.P1name}:{self.P1boardNr}:{self.P1moves}|"
         string += f"{self.P2name}:{self.P2boardNr}:{self.P2moves}|"
         string += f"MiniMax:{self.minimaxScore}|Score:{self.score}|"
@@ -93,92 +109,35 @@ class Node:
         
         return string
     
-    def heuristic(self, P1newMoves, P2newMoves, P1newBoardNr, P2newBoardNr, movingPlayerName, specialCases):
-        #self represents the current state
-        #movingPlayerName refers to the previous node (player whose move will lead to this (new) state)
-        # higher score = better node (more likely to lead to terminal node (any of them))
+    def heuristic(self):
         """
             Factors:
                 1) distance to finish: the closer to finish, the beter (max value = 100)
-                2) available moves: the more available moves in next state, the better (max value = 6)
-                3) ladder distance: if player climbs up a ladder in next move, state is more valuable (highest ladder = 45 tiles)
-                4) snake distance: if player slides down a snake in next move, state is less valuable (lowest slide = 43 tiles)
-                5) blocked: if player's available moves drop by more than 1, it means that it has a blocked move (maximum blocked moves = 1)
-                6) all moves blocked: if player has all moves blocked by opponent, it is guaranteed to lose. In this case score = -inf.
-                ...
+                2) available moves: the more available moves in next state, the better 
         """
         #=======DISTANCE TO FINISH========
-        distance_p1 = P1newBoardNr / 100
-        distance_p2 = P2newBoardNr / 100
+        #distance_p1 = self.P1boardNr / 100
+        distance_p2 = self.P2boardNr / 100
 
 
         #=======AVAILABLE MOVE COUNT======
-        available_moves_p1 = len(P1newMoves) / MOVE_COUNT
-        available_moves_p2 = len(P2newMoves) / MOVE_COUNT
-
-        #========LADDER AND SNAKE DISTANCE==========
-            #specialCases contain all start and end points of snakes and ladders
-            #keys - start points, values - end points
-        ladder_distance_p1 = 0
-        ladder_distance_p2 = 0
-        snake_distance_p1 = 0
-        snake_distance_p2 = 0
-        for startPoint in specialCases.keys():
-            endPoint = specialCases[startPoint]
-
-            if endPoint == P1newBoardNr:
-                # P1 has gone up a ladder or slid down a snake
-                if endPoint > startPoint:
-                    #climbed up a ladder
-                    ladder_distance_p1 = (endPoint - startPoint) / 45
-                else:
-                    #slid down a snake
-                    snake_distance_p1 = abs(endPoint - startPoint) / 43
-
-            if endPoint == P2newBoardNr:
-                 # P2 has gone up a ladder or slid down a snake
-                if endPoint > startPoint:
-                    #climbed up a ladder
-                    ladder_distance_p2 = (endPoint - startPoint) / 45
-                else:
-                    #slid down a snake
-                    snake_distance_p2 = abs(endPoint - startPoint) / 43
+        #available_moves_p1 = len(self.P1moves) / MOVE_COUNT
+        available_moves_p2 = len(self.P2moves) / MOVE_COUNT
 
 
-        #====BLOCKED AND ALL MOVES BLOCKED=================
-        P1_all_moves_blocked = True #if P1 is behind P2 and all P1's moves lead to position of P2, this will remain true
-        P2_all_moves_blocked = True #if P2 is behind P1 and all P2's moves lead to position of P1, this will remain true
-        P1_is_blocked = 0
-        P2_is_blocked = 0
+        #======CALCULATE SCORE=============
+        score = WEIGHTS["distance"] * distance_p2 + WEIGHTS["available_moves"] * available_moves_p2
 
-        for moveP2 in P2newMoves:
-            if P2newBoardNr + moveP2 != P1newBoardNr: 
-                P2_all_moves_blocked = False
-            else:
-                P2_is_blocked = 1
-
-        for moveP1 in P1newMoves:
-            if P1newBoardNr + moveP1 != P2newBoardNr:
-                P1_all_moves_blocked = False
-            else:
-                P1_is_blocked = 1
-
-        #======CALCULATE SCORE FOR EACH PLAYER=============
-        P1_score = WEIGHTS["distance"] * distance_p1 + WEIGHTS["available_moves"] * available_moves_p1 + WEIGHTS["ladder_distance"] * ladder_distance_p1 + WEIGHTS["snake_distance"] * snake_distance_p1 + WEIGHTS["blocked"] * P1_is_blocked
-        P2_score = WEIGHTS["distance"] * distance_p2 + WEIGHTS["available_moves"] * available_moves_p2 + WEIGHTS["ladder_distance"] * ladder_distance_p2 + WEIGHTS["snake_distance"] * snake_distance_p2 + WEIGHTS["blocked"] * P2_is_blocked
-
-        #======RETURN MOVING PLAYER'S SCORE================
-        if movingPlayerName == self.P1name:
-            if P1_all_moves_blocked:
-                return float("-inf")
-            else:
-                return P1_score
+        #======SET NODE'S SCORE================
+        #CPU's objective = maximize own score
+        if self.P2_win:
+            self.score = float("inf")
+        elif self.P1_win:
+            self.score = float("-inf")
         else:
-            if P2_all_moves_blocked:
-                return float("-inf")
-            else:
-                return P2_score
-     
+            self.score = score
+
+
     def generateChildren(self, specialCases, level):
         """
             RULES:
@@ -202,7 +161,7 @@ class Node:
             return
         
         
-        if self.movingPlayer == self.P1name:
+        if self.movingPlayerName == self.P1name:
             idlePlayerName = self.P2name
             moves = self.P1moves
             boardNr = self.P1boardNr
@@ -230,6 +189,7 @@ class Node:
 
                 #check if other player is at possible target
                 if newBoardNr == occupiedBoardNr:
+                    #newMoves.remove(move)
                     continue
         
                 #if opponent is on specialCase endpoint
@@ -250,7 +210,7 @@ class Node:
                         newOtherPlayerMoves.remove(otherPlayerMove)
 
                 #generate next node:
-                if self.movingPlayer == self.P1name:
+                if self.movingPlayerName == self.P1name:
                     P1newMoves = newMoves
                     P2newMoves = newOtherPlayerMoves
                     P1newBoardNr = newBoardNr
@@ -261,22 +221,21 @@ class Node:
                     P1newBoardNr = self.P1boardNr
                     P2newBoardNr = newBoardNr
                 #caculate heuristic value for children node
-                childScore = self.heuristic(P1newMoves, P2newMoves, P1newBoardNr, P2newBoardNr, self.movingPlayer, specialCases)
+                #childScore = self.heuristic(P1newMoves, P2newMoves, P1newBoardNr, P2newBoardNr, self.movingPlayer, specialCases)
 
                 node = Node(P1newMoves, self.P1name, P1newBoardNr, P2newMoves,
-                            self.P2name, P2newBoardNr, idlePlayerName, level, childScore, isMax=not self.isMax)
+                            self.P2name, P2newBoardNr, idlePlayerName, level, isMax=not self.isMax)
                 self.addChild(node)            
     
     def generateTree(self, specialCases, limit):
         
         if self.level >= limit:
+            self.heuristic()
             return
         
         self.generateChildren(specialCases, self.level+1)
         
         for child in self.children:
-            self.score = None
-            #if level <= limit:
             child.generateTree(specialCases, limit)
 
     def saveSubTree(self, **kwargs):
@@ -315,7 +274,7 @@ class Tree:
             node.minimaxScore = node.score
             return node.score
 
-        #maximizing player's turn (CPU)
+        #maximizing player's turn
         if maximizing_player:
             max_score = -float('inf')
             for child in node.children:
@@ -324,7 +283,7 @@ class Tree:
                     max_score = score
             node.minimaxScore = max_score
             return max_score
-        #minimizing players turn (Player)
+        #minimizing players turn
         else:
             min_score = float('inf')
             for child in node.children:

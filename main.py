@@ -1,6 +1,7 @@
 import src.UI
 import src.Tree as TreeProcessor
-from PARAMS import SAVE_TREE, RANDOM_MOVES, CPU_IS_MAXIMIZER
+from PARAMS import SAVE_TREE, RANDOM_MOVES
+
 
 if __name__ == "__main__":
     # Create a new UI object
@@ -78,7 +79,7 @@ if __name__ == "__main__":
         #if maximum depth is reached, need to generate more levels
         if not currentNode.children:
             tree.generateTree(currentNode,  limit=currentNode.level + TreeProcessor.LIMIT)
-            tree.minimax(currentNode, ui.maximizingPlayerStarts)
+            tree.minimax(currentNode, currentNode.isMax)
             if SAVE_TREE:
                 tree.saveTree(currentNode, f"tree{currentNode.level}.txt")
 
@@ -99,10 +100,8 @@ if __name__ == "__main__":
         if not ui.waitingOnPlayer and loopHelper:
             tmp = currentNode.P2boardNr
             #choose child with highest minimax score. If equal, choose the one with highest CPU's board nr
-            if CPU_IS_MAXIMIZER:
-                currentNode = max(currentNode.children, key= lambda x : [x.minimaxScore, x.P2boardNr ] )
-            else:
-                currentNode = min(currentNode.children, key= lambda x : [x.minimaxScore, -x.P2boardNr ] )
+            
+            currentNode = max(currentNode.children, key= lambda x : [x.minimaxScore, x.P2boardNr ] )
             
             ui.updatePlayerProperties("CPU", currentNode.P2boardNr, currentNode.P2moves)
             ui.updatePlayerProperties("Player", currentNode.P1boardNr, currentNode.P1moves)

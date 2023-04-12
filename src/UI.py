@@ -2,7 +2,7 @@ import os
 import pygame
 import sys
 import random
-from PARAMS import INITIAL_MOVE_COUNT, CPU_IS_MAXIMIZER, MOVE_COUNT
+from PARAMS import INITIAL_MOVE_COUNT, MOVE_COUNT
 
 #set working directory to script dir
 #this allows to use relateive directories without going insane
@@ -201,6 +201,7 @@ class UI:
                 self.Player.selected = True
     
     def showVictoryPopup(self, msg1, msg2, reason):
+        self.Player.allowMove = False
         self.waitingOnPlayer = True
         #create a popup container
         popUp = pygame.Surface((self.width_popup, self.height_popup))
@@ -299,21 +300,13 @@ class UI:
                         self.Player.allowMove = True
                         self.waitingOnPlayer = True
                         self.startPlayer = self.Player
-                        if CPU_IS_MAXIMIZER:
-                            self.maximizingPlayerStarts = False
-                        else:
-                            self.maximizingPlayerStarts = True  
-                        #self.maximizingPlayerStarts = False
+                        self.maximizingPlayerStarts = False
                     elif self.mouseOn_ch2_sur:
                         self.Player.allowMove = False
                         self.CPU.allowMove = True
                         self.waitingOnPlayer = False
                         self.startPlayer = self.CPU
-                        if CPU_IS_MAXIMIZER:
-                            self.maximizingPlayerStarts = True
-                        else:
-                            self.maximizingPlayerStarts = False
-                        #self.maximizingPlayerStarts = True#
+                        self.maximizingPlayerStarts = True
             pygame.display.update()
         self.GameOver = False
 
