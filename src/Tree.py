@@ -116,14 +116,10 @@ class Node:
                 2) available moves: the more available moves in next state, the better 
         """
         #=======DISTANCE TO FINISH========
-        #distance_p1 = self.P1boardNr / 100
         distance_p2 = self.P2boardNr / 100
 
-
         #=======AVAILABLE MOVE COUNT======
-        #available_moves_p1 = len(self.P1moves) / MOVE_COUNT
         available_moves_p2 = len(self.P2moves) / MOVE_COUNT
-
 
         #======CALCULATE SCORE=============
         score = WEIGHTS["distance"] * distance_p2 + WEIGHTS["available_moves"] * available_moves_p2
@@ -136,7 +132,6 @@ class Node:
             self.score = float("-inf")
         else:
             self.score = score
-
 
     def generateChildren(self, specialCases, level):
         """
